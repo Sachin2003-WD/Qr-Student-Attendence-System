@@ -1,7 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Calendar, CalendarPlus, MessageSquare, Bell, User, Settings,
-  Users, GraduationCap, BarChart3, Building2, ShieldCheck, Sparkles,
+  LayoutDashboard, Calendar, Bell, User, Settings,
+  Users, GraduationCap, BarChart3, Building2, ShieldCheck, Sparkles, QrCode,
+  FileCheck, Clock, BookOpen, Layers
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -14,28 +15,33 @@ type Item = { title: string; url: string; icon: React.ComponentType<{ className?
 
 const common: Item[] = [
   { title: "Dashboard", url: "/app/dashboard", icon: LayoutDashboard },
+  { title: "Attendance", url: "/app/attendance", icon: QrCode },
   { title: "Calendar", url: "/app/calendar", icon: Calendar },
   { title: "Notifications", url: "/app/notifications", icon: Bell },
 ];
 
 const studentMenu: Item[] = [
-  { title: "Book Session", url: "/app/schedule", icon: CalendarPlus },
-  { title: "My Sessions", url: "/app/sessions", icon: MessageSquare },
-  { title: "Mentors", url: "/app/mentors", icon: GraduationCap },
-  { title: "Feedback", url: "/app/feedback", icon: MessageSquare },
-];
-const mentorMenu: Item[] = [
-  { title: "Requests", url: "/app/sessions", icon: MessageSquare },
-  { title: "My Students", url: "/app/students", icon: Users },
-  { title: "Feedback", url: "/app/feedback", icon: MessageSquare },
+  { title: "Timetable", url: "/app/timetable", icon: Clock },
+  { title: "Leave Requests", url: "/app/leaves", icon: FileCheck },
   { title: "Reports", url: "/app/reports", icon: BarChart3 },
 ];
+
+const facultyMenu: Item[] = [
+  { title: "Student Roster", url: "/app/students", icon: Users },
+  { title: "Timetable", url: "/app/timetable", icon: Clock },
+  { title: "Leave Approval", url: "/app/leaves", icon: FileCheck },
+  { title: "Reports", url: "/app/reports", icon: BarChart3 },
+];
+
 const adminMenu: Item[] = [
   { title: "Students", url: "/app/students", icon: Users },
-  { title: "Mentors", url: "/app/mentors", icon: GraduationCap },
+  { title: "Faculty", url: "/app/faculty", icon: GraduationCap },
   { title: "Admins", url: "/app/admins", icon: ShieldCheck },
   { title: "Departments", url: "/app/departments", icon: Building2 },
-  { title: "Sessions", url: "/app/sessions", icon: MessageSquare },
+  { title: "Courses", url: "/app/courses", icon: BookOpen },
+  { title: "Batches", url: "/app/batches", icon: Layers },
+  { title: "Timetables", url: "/app/timetable", icon: Clock },
+  { title: "Leave Requests", url: "/app/leaves", icon: FileCheck },
   { title: "Reports", url: "/app/reports", icon: BarChart3 },
 ];
 
@@ -45,7 +51,7 @@ const account: Item[] = [
 ];
 
 function menuFor(role: Role) {
-  return role === "student" ? studentMenu : role === "mentor" ? mentorMenu : adminMenu;
+  return role === "student" ? studentMenu : role === "faculty" || (role as string) === "mentor" ? facultyMenu : adminMenu;
 }
 
 export function AppSidebar() {
@@ -54,7 +60,7 @@ export function AppSidebar() {
   const isActive = (u: string) => pathname === u;
 
   const roleMenu = menuFor(role);
-  const roleLabel = role === "student" ? "Student" : role === "mentor" ? "Mentor" : "Admin";
+  const roleLabel = role === "student" ? "Student" : role === "faculty" || (role as string) === "mentor" ? "Faculty" : "Admin";
 
   return (
     <Sidebar collapsible="icon">
@@ -64,8 +70,8 @@ export function AppSidebar() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold">Mentor Matrix</div>
-            <div className="truncate text-xs text-muted-foreground">{roleLabel} workspace</div>
+            <div className="truncate text-sm font-semibold">Smart Attendance</div>
+            <div className="truncate text-xs text-muted-foreground">{roleLabel} Workspace</div>
           </div>
         </Link>
       </SidebarHeader>
@@ -115,7 +121,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="px-2 pb-2 text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
-          v1.0 · Enterprise
+          v1.0 · Smart Attendance
         </div>
       </SidebarFooter>
     </Sidebar>

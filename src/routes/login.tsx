@@ -4,6 +4,9 @@ import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { api } from "@/lib/api-client";
+import { useApp, type Role } from "@/lib/app-context";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -20,29 +23,88 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const nav = useNavigate();
+  const { setRole } = useApp();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRoleState] = useState<Role>("student");
   const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const res = await api.login(cleanEmail, password, role);
+      setRole(role);
+      toast.success(`Welcome back, ${res.name || res.email}!`);
+      nav({ to: "/app/dashboard" });
+    } catch (err: any) {
+      toast.error(err.message || "Invalid email or password. If you haven't registered, create an account first.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Sign in to continue to your dashboard."
-      footer={<>New here? <Link to="/register" className="font-medium text-primary hover:underline">Create an account</Link></>}
+      subtitle="Sign in to access your role-specific dashboard."
+      footer={
+        <>
+          Don't have an account?{" "}
+          <Link to="/register" className="font-medium text-primary hover:underline">
+            Create an account
+          </Link>
+        </>
+      }
     >
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setLoading(true);
-          setTimeout(() => { toast.success("Signed in"); nav({ to: "/app/dashboard" }); }, 500);
-        }}
-      >
-        <div className="grid gap-2"><Label htmlFor="e">Email</Label><Input id="e" type="email" required defaultValue="rohan@college.edu" /></div>
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="grid gap-2">
-          <div className="flex items-center justify-between"><Label htmlFor="p">Password</Label>
-            <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground">Forgot?</Link>
-          </div>
-          <Input id="p" type="password" required defaultValue="password" />
+          <Label>Select Your Account Role</Label>
+          <Select value={role} onValueChange={(val: any) => setRoleState(val)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="student">Student</SelectItem>
+              <SelectItem value="mentor">Faculty / Mentor</SelectItem>
+              <SelectItem value="admin">Administrator</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>{loading ? "Signing in…" : "Sign in"}</Button>
+
+        <div className="grid gap-2">
+          <Label htmlFor="e">Email Address</Label>
+          <Input
+            id="e"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g. name@college.edu"
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="p">Password</Label>
+            <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground">
+              Forgot?
+            </Link>
+          </div>
+          <Input
+            id="p"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your account password"
+          />
+        </div>
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Authenticating…" : `Sign in as ${role === "student" ? "Student" : role === "mentor" ? "Faculty" : "Admin"}`}
+        </Button>
       </form>
     </AuthShell>
   );

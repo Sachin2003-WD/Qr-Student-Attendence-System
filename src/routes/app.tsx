@@ -1,13 +1,15 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
+import { api } from "@/lib/api-client";
 
 export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [
-      { title: "Workspace — Mentor Matrix" },
-      { name: "description", content: "Your Mentor Matrix workspace." },
+      { title: "Workspace — Smart Attendance System" },
+      { name: "description", content: "Your Smart Attendance workspace." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -15,6 +17,26 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppLayout() {
+  const nav = useNavigate();
+  const token = api.getToken();
+
+  useEffect(() => {
+    if (!token) {
+      nav({ to: "/login" });
+    }
+  }, [token, nav]);
+
+  if (!token) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 text-center">
+        <div className="space-y-2">
+          <div className="text-lg font-semibold">Authentication required</div>
+          <div className="text-sm text-muted-foreground">Redirecting to sign in...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
