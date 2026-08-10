@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "./api-client";
 
-export type Role = "student" | "faculty" | "admin";
+export type Role = "student" | "admin";
 
 interface AppState {
   role: Role;
@@ -23,7 +23,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState<string>("");
 
   useEffect(() => {
-    const storedRole = (localStorage.getItem("sa.role") || localStorage.getItem("mm.role") || "student") as Role;
+    const rawRole = localStorage.getItem("sa.role") || localStorage.getItem("mm.role") || "student";
+    const storedRole: Role = rawRole === "admin" ? "admin" : "student";
     const storedTheme = ((localStorage.getItem("sa.theme") || localStorage.getItem("mm.theme")) as "light" | "dark" | null) ?? "light";
     const storedEmail = localStorage.getItem("sa.email") || localStorage.getItem("mm.email") || "";
     const storedName = localStorage.getItem("sa.name");

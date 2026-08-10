@@ -75,6 +75,10 @@ public class StudentAuthService {
 
         Student student = Student.builder()
                 .user(savedUser)
+                .name(savedUser.getName())
+                .email(savedUser.getEmail())
+                .phone(savedUser.getPhone())
+                .password(savedUser.getPassword())
                 .studentId(request.getUsn() != null ? request.getUsn() : "STU" + savedUser.getId())
                 .department(department)
                 .semester(request.getSemester() != null ? request.getSemester() : 1)
@@ -130,13 +134,35 @@ public class StudentAuthService {
                 .build();
     }
 
+    private final OtpService otpService;
+
+    @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        userRepository.findByEmailAndDeletedFalse(request.getEmail())
+        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+
+        String otp = otpService.generateOtp(user.getEmail());
+        emailService.sendOtpEmail(user.getEmail(), otp);
     }
 
+    @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        // password reset handling
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Passwords do not match");
+        }
+
+        if (!otpService.validateOtp(request.getEmail(), request.getOtp())) {
+            throw new UnauthorizedException("Invalid or expired OTP");
+        }
+
+        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        otpService.clearOtp(request.getEmail());
+        emailService.sendPasswordChangedEmail(user.getEmail(), user.getName());
     }
 
     @Transactional

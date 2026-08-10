@@ -161,7 +161,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/my-summary")
-    @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY', 'MENTOR', 'ADMIN')")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getMySummary(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -180,7 +180,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/report")
-    @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY', 'MENTOR', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceReport(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

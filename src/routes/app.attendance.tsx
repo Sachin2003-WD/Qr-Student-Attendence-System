@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import {
   QrCode, RefreshCw, CheckCircle2, Clock,
-  FileSpreadsheet, FileText, Scan, BookOpen, Camera, Play, StopCircle, UserCheck, AlertCircle, XCircle
+  FileSpreadsheet, FileText, Scan, BookOpen, Camera, Play, StopCircle, UserCheck, AlertCircle, XCircle, AlertTriangle
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/attendance")({
@@ -37,13 +37,13 @@ function AttendancePage() {
         title="Smart QR Attendance Control Center"
         subtitle={
           role === "student"
-            ? "Present your personal dynamic QR code to the Admin or scan today's classroom QR."
-            : "Admin & Faculty control panel: Select created batches, operate camera QR scanner, and monitor live attendance."
+            ? "Present your personal dynamic QR code to the Admin or scan today's session QR."
+            : "Admin control panel: Select created batches, operate camera QR scanner, and monitor live attendance."
         }
       />
 
       {role === "student" && <StudentAttendanceView />}
-      {(role === "faculty" || role === "admin") && <FacultyAdminAttendanceView />}
+      {role === "admin" && <AdminAttendanceView />}
     </>
   );
 }
@@ -69,19 +69,32 @@ function StudentAttendanceView() {
     }
   };
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const res = await api.getMyAttendanceSummary();
       setSummary(res);
     } catch (err: any) {
       console.error(err);
     }
-  };
+  }, []);
 
+  // Initial load and 3-second realtime background polling
   useEffect(() => {
     fetchDynamicQR();
     fetchSummary();
-  }, []);
+
+    const interval = setInterval(() => {
+      fetchSummary();
+    }, 3000);
+
+    const handleStorage = () => fetchSummary();
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [fetchSummary]);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
@@ -190,8 +203,11 @@ function StudentAttendanceView() {
 
       {/* Student Attendance Logs */}
       <Card className="border border-border/60">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-base font-bold">Your Attendance Logs</CardTitle>
+          <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+            Realtime Auto-Syncing
+          </Badge>
         </CardHeader>
         <CardContent>
           <Table>
@@ -199,7 +215,8 @@ function StudentAttendanceView() {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Subject</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Time Marked</TableHead>
+                <TableHead className="text-right">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,8 +224,11 @@ function StudentAttendanceView() {
                 summary.records.slice(0, 10).map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium text-xs">{r.date}</TableCell>
-                    <TableCell className="text-xs">{r.subjectName || "Grooming"}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-xs">{r.subjectName || "Grooming & Skills"}</TableCell>
+                    <TableCell className="text-xs font-mono text-muted-foreground">
+                      {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Badge variant={r.status === "PRESENT" ? "default" : "destructive"} className="text-[10px]">
                         {r.status}
                       </Badge>
@@ -217,7 +237,7 @@ function StudentAttendanceView() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={3} className="py-6 text-center text-xs text-muted-foreground">
+                  <TableCell colSpan={4} className="py-6 text-center text-xs text-muted-foreground">
                     No attendance records logged yet.
                   </TableCell>
                 </TableRow>
@@ -230,7 +250,7 @@ function StudentAttendanceView() {
   );
 }
 
-function FacultyAdminAttendanceView() {
+function AdminAttendanceView() {
   const [batches, setBatches] = useState<any[]>([]);
   const [selectedBatchCode, setSelectedBatchCode] = useState<string>("");
   const [selectedSubject, setSelectedSubject] = useState<string>("Grooming");
@@ -238,7 +258,8 @@ function FacultyAdminAttendanceView() {
   const [selectedTrainer, setSelectedTrainer] = useState<string>("Laxman Ashok Handenavar");
   const [selectedTiming, setSelectedTiming] = useState<string>("04:45 PM");
 
-  const [sessionActive, setSessionActive] = useState<boolean>(true);
+  // REQUIREMENT 1: By default, attendance session is STOPPED (false)
+  const [sessionActive, setSessionActive] = useState<boolean>(false);
   const [activeSessionId, setActiveSessionId] = useState<number>(50);
 
   const [cameraActive, setCameraActive] = useState<boolean>(false);
@@ -257,7 +278,7 @@ function FacultyAdminAttendanceView() {
   } | null>(null);
 
   const [presentCount, setPresentCount] = useState<number>(0);
-  const [totalStudents, setTotalStudents] = useState<number>(30);
+  const [totalStudents, setTotalStudents] = useState<number>(1);
   const [scannedList, setScannedList] = useState<AttendanceResponse[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -285,28 +306,73 @@ function FacultyAdminAttendanceView() {
     }
   };
 
-  const loadInitialLogs = async () => {
+  const loadInitialLogs = useCallback(async () => {
     try {
       const report = await api.getAttendanceReport();
-      if (report && report.length > 0) {
+      if (report && Array.isArray(report)) {
         setScannedList(report);
-        setPresentCount(report.filter(r => r.status === "PRESENT").length);
+        const pCount = report.filter((r) => r.status === "PRESENT").length;
+        setPresentCount(pCount);
+
+        // Update Last Scanned Student Payload if logs exist
+        if (report.length > 0) {
+          const latest = report[0];
+          setScanResult((prev) => {
+            if (!prev || prev.studentName !== (latest.userName || latest.userEmail)) {
+              return {
+                success: true,
+                studentName: latest.userName || latest.userEmail,
+                studentId: "STU" + latest.id,
+                batchCode: selectedBatchCode || "BATCH-01",
+                subject: latest.subjectName || selectedSubject,
+                date: latest.date || currentDateStr,
+                time: latest.markedAt ? new Date(latest.markedAt).toLocaleTimeString() : new Date().toLocaleTimeString(),
+              };
+            }
+            return prev;
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [currentDateStr, selectedBatchCode, selectedSubject]);
+
+  const loadStudentsCount = async () => {
+    try {
+      const studentsData = await api.getStudents();
+      if (studentsData && Array.isArray(studentsData) && studentsData.length > 0) {
+        setTotalStudents(studentsData.length);
       }
     } catch {
       // ignore
     }
   };
 
+  // Realtime 3-second background polling timer & storage event listener
   useEffect(() => {
     loadBatches();
+    loadStudentsCount();
     loadInitialLogs();
-  }, []);
+
+    const interval = setInterval(() => {
+      loadInitialLogs();
+    }, 3000);
+
+    const handleStorage = () => loadInitialLogs();
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [loadInitialLogs]);
 
   // Handle Camera Video Stream
   useEffect(() => {
     let stream: MediaStream | null = null;
 
-    if (cameraActive) {
+    if (cameraActive && sessionActive) {
       navigator.mediaDevices
         ?.getUserMedia({ video: { facingMode: "environment" } })
         .then((s) => {
@@ -333,7 +399,7 @@ function FacultyAdminAttendanceView() {
         stream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [cameraActive]);
+  }, [cameraActive, sessionActive]);
 
   const handleBatchSelectChange = (batchCode: string) => {
     setSelectedBatchCode(batchCode);
@@ -353,12 +419,12 @@ function FacultyAdminAttendanceView() {
         batchId: 1,
         subjectId: 1,
       });
-      setActiveSessionId(res.id || 50);
+      setActiveSessionId(res.id || Date.now());
       setSessionActive(true);
-      toast.success(`Attendance session started for batch ${selectedBatchCode}!`);
+      toast.success(`Attendance session STARTED for batch ${selectedBatchCode}!`);
     } catch {
       setSessionActive(true);
-      toast.success(`Attendance session started for ${selectedBatchCode}!`);
+      toast.success(`Attendance session STARTED for ${selectedBatchCode}!`);
     } finally {
       setLoading(false);
     }
@@ -369,10 +435,12 @@ function FacultyAdminAttendanceView() {
       setLoading(true);
       await api.closeAttendanceSession(activeSessionId);
       setSessionActive(false);
-      toast.info(`Attendance session closed for ${selectedBatchCode}. Absents calculated.`);
+      setCameraActive(false);
+      toast.info(`Attendance session STOPPED for ${selectedBatchCode}.`);
     } catch {
       setSessionActive(false);
-      toast.info(`Attendance session closed.`);
+      setCameraActive(false);
+      toast.info(`Attendance session STOPPED.`);
     } finally {
       setLoading(false);
     }
@@ -383,10 +451,10 @@ function FacultyAdminAttendanceView() {
     if (!qrInputToken.trim()) return;
 
     if (!sessionActive) {
-      toast.error("Attendance session is closed.");
+      toast.error("Attendance session is currently STOPPED! Click 'Start Session' above to begin taking attendance.");
       setScanResult({
         success: false,
-        message: "Attendance session is closed.",
+        message: "Attendance session is currently STOPPED.",
       });
       return;
     }
@@ -398,20 +466,22 @@ function FacultyAdminAttendanceView() {
       const response = await api.scanQrToken(activeSessionId, token);
       const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-      setScanResult({
+      const newResult = {
         success: true,
         studentName: response.userName || "Student User",
-        studentId: "STU" + response.id,
-        batchCode: selectedBatchCode,
+        studentId: "STU" + (response.id || Date.now()),
+        batchCode: selectedBatchCode || "BATCH-01",
         subject: selectedSubject,
         date: currentDateStr,
         time: nowTime,
-      });
+      };
 
+      setScanResult(newResult);
       setPresentCount((prev) => prev + 1);
-      setScannedList((prev) => [response, ...prev.filter(r => r.id !== response.id)]);
+      setScannedList((prev) => [response, ...prev.filter((r) => r.id !== response.id)]);
       toast.success(`✓ Attendance Marked: ${response.userName || "Student"} [PRESENT]`);
       setQrInputToken("");
+      loadInitialLogs();
     } catch (err: any) {
       const errMsg = err.message || "Invalid or expired QR code token!";
       toast.error(errMsg);
@@ -430,6 +500,26 @@ function FacultyAdminAttendanceView() {
 
   return (
     <div className="space-y-6">
+      {/* REQUIREMENT 1 BANNER: STOPPED BY DEFAULT NOTICE */}
+      {!sessionActive && (
+        <Card className="border-rose-500/40 bg-rose-500/10">
+          <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 text-xs">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-rose-500 shrink-0" />
+              <div>
+                <strong className="text-sm font-bold text-foreground block">Attendance Session is STOPPED (Default State)</strong>
+                <p className="text-muted-foreground mt-0.5">
+                  Camera QR Scanner and manual verification inputs are disabled while session is stopped. Click <strong>"Start Session"</strong> to enable attendance logging for {selectedBatchCode || "selected batch"}.
+                </p>
+              </div>
+            </div>
+            <Button size="sm" className="gap-2 text-xs font-bold shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md" onClick={handleStartSession} disabled={loading}>
+              <Play className="h-4 w-4" /> Start Session Now
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 1. SESSION CONFIGURATION BAR WITH CREATED BATCHES */}
       <Card className="border-border/60 shadow-sm bg-card">
         <CardHeader className="pb-3 border-b border-border/40">
@@ -445,7 +535,7 @@ function FacultyAdminAttendanceView() {
                   : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
               }`}
             >
-              Session: {sessionActive ? "ACTIVE ●" : "CLOSED ✕"}
+              Session: {sessionActive ? "ACTIVE ●" : "STOPPED ✕"}
             </Badge>
           </div>
         </CardHeader>
@@ -487,11 +577,11 @@ function FacultyAdminAttendanceView() {
 
             <div>
               {sessionActive ? (
-                <Button variant="destructive" size="sm" className="w-full gap-2 text-xs font-semibold" onClick={handleStopSession}>
+                <Button variant="destructive" size="sm" className="w-full gap-2 text-xs font-semibold" onClick={handleStopSession} disabled={loading}>
                   <StopCircle className="h-4 w-4" /> Stop Session
                 </Button>
               ) : (
-                <Button size="sm" className="w-full gap-2 text-xs font-semibold" onClick={handleStartSession}>
+                <Button size="sm" className="w-full gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleStartSession} disabled={loading}>
                   <Play className="h-4 w-4" /> Start Session
                 </Button>
               )}
@@ -503,7 +593,7 @@ function FacultyAdminAttendanceView() {
       {/* 2. LIVE ATTENDANCE STATS COUNTER */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 border border-border/60">
-          <div className="text-xs text-muted-foreground font-medium">Total Students</div>
+          <div className="text-xs text-muted-foreground font-medium">Total Registered Students</div>
           <div className="text-2xl font-bold font-mono text-foreground mt-1">{totalStudents}</div>
         </Card>
         <Card className="p-4 border border-emerald-500/30 bg-emerald-500/5">
@@ -511,11 +601,11 @@ function FacultyAdminAttendanceView() {
           <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{presentCount}</div>
         </Card>
         <Card className="p-4 border border-rose-500/30 bg-rose-500/5">
-          <div className="text-xs text-rose-600 dark:text-rose-400 font-medium">Absent (Calculated)</div>
+          <div className="text-xs text-rose-600 dark:text-rose-400 font-medium">Absent</div>
           <div className="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">{absentCount}</div>
         </Card>
         <Card className="p-4 border border-primary/30 bg-primary/5">
-          <div className="text-xs text-primary font-medium">Attendance %</div>
+          <div className="text-xs text-primary font-medium">Attendance Rate</div>
           <div className="text-2xl font-bold font-mono text-primary mt-1">{attendancePercentage}%</div>
         </Card>
       </div>
@@ -529,7 +619,13 @@ function FacultyAdminAttendanceView() {
               <span className="flex items-center gap-2">
                 <Camera className="h-5 w-5 text-primary" /> Camera QR Scanner
               </span>
-              <Button size="sm" variant={cameraActive ? "default" : "outline"} className="h-7 text-xs gap-1" onClick={() => setCameraActive(!cameraActive)}>
+              <Button
+                size="sm"
+                variant={cameraActive ? "default" : "outline"}
+                className="h-7 text-xs gap-1"
+                disabled={!sessionActive}
+                onClick={() => setCameraActive(!cameraActive)}
+              >
                 <Camera className="h-3.5 w-3.5" />
                 {cameraActive ? "Pause Camera" : "Enable Camera"}
               </Button>
@@ -540,12 +636,12 @@ function FacultyAdminAttendanceView() {
             <div className="relative aspect-video w-full rounded-xl bg-slate-950 border border-slate-800 overflow-hidden flex flex-col items-center justify-center text-center p-4">
               <video
                 ref={videoRef}
-                className={`absolute inset-0 h-full w-full object-cover ${cameraActive ? "block" : "hidden"}`}
+                className={`absolute inset-0 h-full w-full object-cover ${cameraActive && sessionActive ? "block" : "hidden"}`}
                 playsInline
                 muted
               />
 
-              {cameraActive ? (
+              {cameraActive && sessionActive ? (
                 <>
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40 pointer-events-none" />
 
@@ -565,8 +661,12 @@ function FacultyAdminAttendanceView() {
               ) : (
                 <div className="text-slate-400 text-xs space-y-2">
                   <XCircle className="w-8 h-8 mx-auto text-slate-600" />
-                  <p className="font-semibold">Camera scanner paused</p>
-                  <p className="text-[11px] text-slate-500">Click "Enable Camera" above or scan using QR token input below.</p>
+                  <p className="font-semibold">{sessionActive ? "Camera scanner paused" : "Attendance Session Stopped"}</p>
+                  <p className="text-[11px] text-slate-500">
+                    {sessionActive
+                      ? 'Click "Enable Camera" above or scan using QR token input below.'
+                      : 'Click "Start Session" above to activate camera scanner.'}
+                  </p>
                 </div>
               )}
             </div>
@@ -575,7 +675,7 @@ function FacultyAdminAttendanceView() {
             <form onSubmit={handleScanTokenSubmit} className="space-y-2">
               <div className="flex gap-2">
                 <Input
-                  placeholder="Scan or enter student QR token (e.g. MM-STUDENT-1024)..."
+                  placeholder={sessionActive ? "Scan or enter student QR token..." : "Session is stopped. Click Start Session above."}
                   value={qrInputToken}
                   onChange={(e) => setQrInputToken(e.target.value)}
                   className="text-xs font-mono h-10"
@@ -589,11 +689,16 @@ function FacultyAdminAttendanceView() {
           </CardContent>
         </Card>
 
-        {/* LAST SCANNED STUDENT PAYLOAD CARD */}
+        {/* REQUIREMENT 2: LAST SCANNED STUDENT PAYLOAD CARD WITH REALTIME UPDATES */}
         <Card className="lg:col-span-5 border border-border/60 flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-border/40">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-primary" /> Last Scanned Student Payload
+            <CardTitle className="text-base font-bold flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-primary" /> Last Scanned Student Payload
+              </span>
+              <Badge variant="outline" className="text-[10px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                Live Realtime
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4 flex-1 flex flex-col justify-center">
@@ -646,18 +751,28 @@ function FacultyAdminAttendanceView() {
               <div className="text-center py-10 space-y-2 text-muted-foreground">
                 <Scan className="w-10 h-10 mx-auto text-muted-foreground/40" />
                 <p className="text-xs font-semibold">Waiting for student QR scan...</p>
-                <p className="text-[11px]">Scanned student identity details will be rendered here instantly.</p>
+                <p className="text-[11px]">Scanned student identity details will be rendered here instantly in real-time.</p>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* 4. RECENT SCANNED SESSION LIST TABLE */}
+      {/* REQUIREMENT 2: RECENT SESSION ATTENDANCE LOGS TABLE WITH REALTIME UPDATES */}
       <Card className="border border-border/60">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-base font-bold">Recent Session Attendance Logs</CardTitle>
-          <div className="flex gap-2">
+          <div>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" /> Recent Session Attendance Logs
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Live real-time feed of scanned and marked student attendance logs.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+              Live Realtime (3s)
+            </Badge>
             <a href={api.getAttendancePdfExportUrl()} target="_blank" rel="noreferrer">
               <Button size="sm" variant="outline" className="gap-1 text-xs h-8">
                 <FileText className="h-3.5 w-3.5 text-red-500" /> PDF
@@ -686,7 +801,7 @@ function FacultyAdminAttendanceView() {
                 scannedList.map((r, i) => (
                   <TableRow key={i}>
                     <TableCell className="font-medium text-xs">{r.userName || r.userEmail}</TableCell>
-                    <TableCell className="font-mono text-xs text-primary font-semibold">{selectedBatchCode || "JRA-GROGRD-E532"}</TableCell>
+                    <TableCell className="font-mono text-xs text-primary font-semibold">{selectedBatchCode || "BATCH-01"}</TableCell>
                     <TableCell className="text-xs">{r.subjectName || selectedSubject}</TableCell>
                     <TableCell className="text-xs font-mono text-muted-foreground">
                       {new Date(r.markedAt || Date.now()).toLocaleTimeString()}
@@ -701,7 +816,7 @@ function FacultyAdminAttendanceView() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
-                    No student scans logged for current session yet. Point student QR code at the camera scanner.
+                    No student scans logged for current session yet. Click "Start Session" and point student QR code at camera.
                   </TableCell>
                 </TableRow>
               )}

@@ -8,8 +8,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useApp } from "@/lib/app-context";
-import type { Role } from "@/lib/mock-data";
+import { useApp, type Role } from "@/lib/app-context";
 
 type Item = { title: string; url: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -26,22 +25,11 @@ const studentMenu: Item[] = [
   { title: "Reports", url: "/app/reports", icon: BarChart3 },
 ];
 
-const facultyMenu: Item[] = [
-  { title: "Student Roster", url: "/app/students", icon: Users },
-  { title: "Timetable", url: "/app/timetable", icon: Clock },
-  { title: "Leave Approval", url: "/app/leaves", icon: FileCheck },
-  { title: "Reports", url: "/app/reports", icon: BarChart3 },
-];
-
 const adminMenu: Item[] = [
   { title: "Students", url: "/app/students", icon: Users },
-  { title: "Faculty", url: "/app/faculty", icon: GraduationCap },
-  { title: "Admins", url: "/app/admins", icon: ShieldCheck },
-  { title: "Departments", url: "/app/departments", icon: Building2 },
-  { title: "Courses", url: "/app/courses", icon: BookOpen },
+  { title: "Admins (10 Max)", url: "/app/admins", icon: ShieldCheck },
   { title: "Batches", url: "/app/batches", icon: Layers },
-  { title: "Timetables", url: "/app/timetable", icon: Clock },
-  { title: "Leave Requests", url: "/app/leaves", icon: FileCheck },
+  { title: "Departments", url: "/app/departments", icon: Building2 },
   { title: "Reports", url: "/app/reports", icon: BarChart3 },
 ];
 
@@ -51,7 +39,7 @@ const account: Item[] = [
 ];
 
 function menuFor(role: Role) {
-  return role === "student" ? studentMenu : role === "faculty" || (role as string) === "mentor" ? facultyMenu : adminMenu;
+  return role === "admin" ? adminMenu : studentMenu;
 }
 
 export function AppSidebar() {
@@ -60,7 +48,7 @@ export function AppSidebar() {
   const isActive = (u: string) => pathname === u;
 
   const roleMenu = menuFor(role);
-  const roleLabel = role === "student" ? "Student" : role === "faculty" || (role as string) === "mentor" ? "Faculty" : "Admin";
+  const roleLabel = role === "admin" ? "Admin" : "Student";
 
   return (
     <Sidebar collapsible="icon">
@@ -119,10 +107,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="px-2 pb-2 text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
-          v1.0 · Smart Attendance
-        </div>
+      <SidebarFooter className="group-data-[collapsible=icon]:hidden border-t border-sidebar-border p-3 text-[11px] text-muted-foreground">
+        Smart Attendance v2.0
       </SidebarFooter>
     </Sidebar>
   );

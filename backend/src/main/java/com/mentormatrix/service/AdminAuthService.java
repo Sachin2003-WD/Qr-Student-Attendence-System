@@ -11,6 +11,7 @@ import com.mentormatrix.exception.MaxLimitReachedException;
 import com.mentormatrix.exception.ResourceNotFoundException;
 import com.mentormatrix.exception.UnauthorizedException;
 import com.mentormatrix.repository.AdminRepository;
+import com.mentormatrix.repository.UserRepository;
 import com.mentormatrix.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminAuthService {
 
     private final AdminRepository adminRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
@@ -27,10 +29,11 @@ public class AdminAuthService {
     private final OtpService otpService;
     private final NotificationService notificationService;
 
-    public AdminAuthService(AdminRepository adminRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+    public AdminAuthService(AdminRepository adminRepository, UserRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
                             RefreshTokenService refreshTokenService, EmailService emailService,
                             OtpService otpService, NotificationService notificationService) {
         this.adminRepository = adminRepository;
+        this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.refreshTokenService = refreshTokenService;
@@ -46,18 +49,30 @@ public class AdminAuthService {
             throw new MaxLimitReachedException("Maximum number of admins (" + AppConstants.MAX_ADMIN_COUNT + ") reached.");
         }
 
-        if (adminRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
+        if (userRepository.existsByEmailAndDeletedFalse(request.getEmail()) || adminRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
             throw new DuplicateResourceException("Email is already registered");
         }
-        if (adminRepository.existsByPhoneAndDeletedFalse(request.getPhone())) {
+        if (userRepository.existsByPhoneAndDeletedFalse(request.getPhone()) || adminRepository.existsByPhoneAndDeletedFalse(request.getPhone())) {
             throw new DuplicateResourceException("Phone number is already registered");
         }
 
+        com.mentormatrix.entity.User user = com.mentormatrix.entity.User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(com.mentormatrix.enums.UserRole.ADMIN)
+                .active(true)
+                .deleted(false)
+                .build();
+        user = userRepository.save(user);
+
         Admin admin = new Admin();
-        admin.setName(request.getName());
-        admin.setEmail(request.getEmail());
-        admin.setPhone(request.getPhone());
-        admin.setPassword(passwordEncoder.encode(request.getPassword()));
+        admin.setUser(user);
+        admin.setName(user.getName());
+        admin.setEmail(user.getEmail());
+        admin.setPhone(user.getPhone());
+        admin.setPassword(user.getPassword());
         admin.setActive(true);
         admin.setDeleted(false);
 

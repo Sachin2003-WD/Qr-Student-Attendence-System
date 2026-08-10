@@ -45,6 +45,8 @@ function CalendarPage() {
   const [cursor, setCursor] = useState(() => new Date());
   const [records, setRecords] = useState<AttendanceResponse[]>([]);
   const [createdBatches, setCreatedBatches] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [allAttendanceReport, setAllAttendanceReport] = useState<AttendanceResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Date Detail Popup State
@@ -58,14 +60,18 @@ function CalendarPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [summary, batchesData] = await Promise.all([
+      const [summary, batchesData, studentsData, reportData] = await Promise.all([
         api.getMyAttendanceSummary(),
         api.getBatches(),
+        api.getStudents(),
+        api.getAttendanceReport(),
       ]);
       setRecords(summary.records || []);
       setCreatedBatches(batchesData || []);
+      setStudents(studentsData || []);
+      setAllAttendanceReport(reportData || []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch calendar attendance data:", err);
     } finally {
       setLoading(false);
     }
@@ -86,10 +92,11 @@ function CalendarPage() {
     return cells;
   }, [year, month]);
 
-  // Group multiple subject attendance records by Date string
+  // Combined attendance records grouped by Date string
   const attendanceByDate = useMemo(() => {
     const map = new Map<string, AttendanceResponse[]>();
-    for (const r of records) {
+    const combined = allAttendanceReport.length > 0 ? allAttendanceReport : records;
+    for (const r of combined) {
       if (r.date) {
         const list = map.get(r.date) || [];
         list.push(r);
@@ -97,7 +104,7 @@ function CalendarPage() {
       }
     }
     return map;
-  }, [records]);
+  }, [records, allAttendanceReport]);
 
   const formatDateStr = (d: Date) => {
     const yyyy = d.getFullYear();
@@ -122,56 +129,61 @@ function CalendarPage() {
     return selectedDateStr > todayStr;
   }, [selectedDateStr, todayStr]);
 
-  // Calculate Batch Sessions for Selected Date
+  // Calculate Batch Sessions for Selected Date dynamically from real MySQL DB data
   const dateBatchSessions = useMemo((): BatchDaySessionDetail[] => {
     if (!selectedDateStr) return [];
     
-    // STRICT RULE: Future dates have 0 attendance records
+    // Future dates have 0 attendance records
     if (selectedDateStr > todayStr) {
       return [];
     }
 
     const dateLogs = attendanceByDate.get(selectedDateStr) || [];
 
-    // Use admin created batches or active batches
+    // Use admin created batches
     const batchesToUse = createdBatches.length > 0 ? createdBatches : [
-      { id: 1, batchCode: "JRA-GROGRD-E532", subjectName: "Grooming", branch: "Rajajinagar Jspiders", trainerName: "Laxman Ashok Handenavar", classTiming: "04:45 PM" },
-      { id: 2, batchCode: "JRA-DSWDSD-A7", subjectName: "Data Structures & Java", branch: "Rajajinagar Jspiders", trainerName: "Dr. Aris Thorne", classTiming: "10:30 AM" }
+      { id: 1, batchCode: "BATCH-01", subjectName: "Grooming & Skills", branch: "Main Campus", trainerName: "Academic Faculty", classTiming: "10:00 AM" }
     ];
+
+    const totalEnrolled = students.length;
 
     return batchesToUse.map((b: any, idx: number) => {
       const code = b.batchCode || b.name || `BATCH-${idx + 1}`;
       const matchingLogs = dateLogs.filter(r => r.subjectName === b.subjectName || r.subjectCode === code || dateLogs.length > 0);
 
-      const presentList = matchingLogs.filter(r => r.status === "PRESENT");
-      const totalEnrolled = 37;
-      const presentCount = Math.min(presentList.length > 0 ? presentList.length + 30 : 32 + (idx % 3), totalEnrolled);
-      const absentCount = totalEnrolled - presentCount;
-      const pct = parseFloat(((presentCount / totalEnrolled) * 100).toFixed(2));
+      const presentCount = matchingLogs.filter(r => r.status === "PRESENT").length;
+      const absentCount = Math.max(totalEnrolled - presentCount, 0);
+      const pct = totalEnrolled > 0 ? parseFloat(((presentCount / totalEnrolled) * 100).toFixed(2)) : 0;
 
-      const sampleScannedStudents = [
-        { name: "Sachin C K", usn: "STU1024", status: "PRESENT" as const, time: b.classTiming || "04:45 PM" },
-        { name: "Rohan Verma", usn: "STU1025", status: "PRESENT" as const, time: b.classTiming || "04:45 PM" },
-        { name: "Ananya Sharma", usn: "STU1026", status: "PRESENT" as const, time: b.classTiming || "04:45 PM" },
-        { name: "Vikramaditya Rao", usn: "STU1027", status: "ABSENT" as const, time: "-" },
-        { name: "Priya Patel", usn: "STU1028", status: "PRESENT" as const, time: b.classTiming || "04:45 PM" },
-      ];
+      // Build real roster from registered students
+      const scannedStudents = students.map((s: any) => {
+        const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
+        const usn = s.usn || `STU100${s.id}`;
+        const matchRecord = matchingLogs.find(r => r.userEmail === s.email || r.userName === s.name);
+        const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
+        return {
+          name: studentName,
+          usn,
+          status: (isPresent ? "PRESENT" : "ABSENT") as "PRESENT" | "ABSENT",
+          time: isPresent ? (matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : (b.classTiming || "10:00 AM")) : "-",
+        };
+      });
 
       return {
         batchId: b.id || idx + 1,
         batchCode: code,
-        subjectName: b.subjectName || "Grooming",
-        branch: b.branch || "Rajajinagar Jspiders",
-        trainerName: b.trainerName || "Laxman Ashok Handenavar",
-        classTiming: b.classTiming || "04:45 PM",
+        subjectName: b.subjectName || "Grooming & Skills",
+        branch: b.branch || "Main Campus",
+        trainerName: b.trainerName || "Academic Faculty",
+        classTiming: b.classTiming || "10:00 AM",
         totalStudents: totalEnrolled,
         presentStudents: presentCount,
         absentStudents: absentCount,
         percentage: pct,
-        scannedStudents: sampleScannedStudents,
+        scannedStudents,
       };
     });
-  }, [selectedDateStr, todayStr, attendanceByDate, createdBatches]);
+  }, [selectedDateStr, todayStr, attendanceByDate, createdBatches, students]);
 
   // Overall totals for selected date popup
   const totalBatchesCount = isFutureDate ? 0 : dateBatchSessions.length;
@@ -180,11 +192,13 @@ function CalendarPage() {
   const totalAbsentAll = isFutureDate ? 0 : Math.max(totalEnrolledAll - totalPresentAll, 0);
   const overallPctAll = isFutureDate ? "0.00" : (totalEnrolledAll > 0 ? ((totalPresentAll / totalEnrolledAll) * 100).toFixed(2) : "0.00");
 
+  const portalTotalStudents = students.length;
+
   return (
     <>
       <PageHeader
         title="Attendance Calendar Control"
-        subtitle="Click any date on the calendar to inspect batch attendance sessions, total students, and present counts."
+        subtitle="Click any date on the calendar to inspect real batch attendance sessions, total enrolled students, and present counts."
         actions={
           <div className="flex items-center gap-1">
             <Button variant="outline" size="icon" onClick={() => setCursor(new Date(year, month - 1, 1))}>
@@ -219,9 +233,8 @@ function CalendarPage() {
               const isToday = dateStr === todayStr;
               const isFuture = dateStr > todayStr;
 
-              // Calculate cell student counts
-              const dayTotalStudents = 37;
-              const dayPresentStudents = isFuture ? 0 : (recList.length > 0 ? recList.length + 30 : (isToday ? 32 : (d.getDate() % 4 === 0 ? 30 : 34)));
+              const dayTotalStudents = portalTotalStudents;
+              const dayPresentStudents = isFuture ? 0 : recList.filter(r => r.status === "PRESENT").length;
 
               return (
                 <div
@@ -368,36 +381,42 @@ function CalendarPage() {
                           </span>
                         </div>
 
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Student Name</TableHead>
-                              <TableHead className="text-xs">USN / ID</TableHead>
-                              <TableHead className="text-xs">Time Marked</TableHead>
-                              <TableHead className="text-right text-xs">Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {b.scannedStudents.map((s, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell className="text-xs font-medium">{s.name}</TableCell>
-                                <TableCell className="text-xs font-mono text-muted-foreground">{s.usn}</TableCell>
-                                <TableCell className="text-xs font-mono text-muted-foreground">{s.time}</TableCell>
-                                <TableCell className="text-right">
-                                  <Badge
-                                    className={`text-[10px] font-bold ${
-                                      s.status === "PRESENT"
-                                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                        : "bg-rose-600 hover:bg-rose-700 text-white"
-                                    }`}
-                                  >
-                                    {s.status}
-                                  </Badge>
-                                </TableCell>
+                        {b.scannedStudents.length > 0 ? (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Student Name</TableHead>
+                                <TableHead className="text-xs">USN / ID</TableHead>
+                                <TableHead className="text-xs">Time Marked</TableHead>
+                                <TableHead className="text-right text-xs">Status</TableHead>
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {b.scannedStudents.map((s, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell className="text-xs font-medium">{s.name}</TableCell>
+                                  <TableCell className="text-xs font-mono text-muted-foreground">{s.usn}</TableCell>
+                                  <TableCell className="text-xs font-mono text-muted-foreground">{s.time}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Badge
+                                      className={`text-[10px] font-bold ${
+                                        s.status === "PRESENT"
+                                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                          : "bg-rose-600 hover:bg-rose-700 text-white"
+                                      }`}
+                                    >
+                                      {s.status}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <div className="py-6 text-center text-xs text-muted-foreground italic">
+                            No registered students found in portal for this batch.
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

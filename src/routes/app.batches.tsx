@@ -5,28 +5,306 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Layers, Plus, BookOpen, Clock, User, Calendar, Trash2, Search, Copy, Check } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Layers, Plus, BookOpen, Clock, User, Calendar, Trash2, Search, Copy, Check, CheckCircle2, RefreshCw, Building2, Users, Mail, IdCard } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { api } from "@/lib/api-client";
+import { api, type AttendanceSummaryResponse, type AttendanceResponse } from "@/lib/api-client";
 import { useApp } from "@/lib/app-context";
 
 export const Route = createFileRoute("/app/batches")({
   head: () => ({
     meta: [
-      { title: "Batches Management — Smart Attendance System" },
-      { name: "description", content: "Create and manage academic batch codes, trainers, and class schedules." },
+      { title: "Batches & Attendance — Smart Attendance System" },
+      { name: "description", content: "View batch enrollment, registered student counts, and attendance history in real-time." },
       { name: "robots", content: "noindex" },
     ],
   }),
-  component: BatchesManagementPage,
+  component: BatchesPage,
 });
 
-function BatchesManagementPage() {
+function BatchesPage() {
   const { role } = useApp();
+
+  return (
+    <>
+      {role === "admin" ? <AdminBatchesView /> : <StudentBatchesView />}
+    </>
+  );
+}
+
+// ==========================================
+// STUDENT BATCHES & ATTENDANCE HISTORY VIEW
+// ==========================================
+function StudentBatchesView() {
   const [batches, setBatches] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [records, setRecords] = useState<AttendanceResponse[]>([]);
+  const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStudentData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const [batchesData, summaryData, studentsData, reportData] = await Promise.all([
+        api.getBatches(),
+        api.getMyAttendanceSummary(),
+        api.getStudents(),
+        api.getAttendanceReport(),
+      ]);
+      setBatches(batchesData || []);
+      setSummary(summaryData);
+      setStudents(studentsData || []);
+      const logs = (reportData && reportData.length > 0) ? reportData : (summaryData?.records || []);
+      setRecords(logs);
+    } catch (err: any) {
+      console.error("Failed to load student batch attendance:", err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, []);
+
+  // Realtime 3-second background polling & storage event listener
+  useEffect(() => {
+    fetchStudentData(false);
+    const interval = setInterval(() => {
+      fetchStudentData(true);
+    }, 3000);
+
+    const handleStorage = () => fetchStudentData(true);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [fetchStudentData]);
+
+  const totalRegisteredStudents = students.length > 0 ? students.length : 1;
+  const presentRecords = records.filter((r) => r.status === "PRESENT");
+  const presentStudentsCount = presentRecords.length;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Student Batches & Attendance Control"
+        subtitle="Track enrolled batches, total registered students, student presence counts, and attendance history in real-time."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => fetchStudentData(false)}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Live Sync
+          </Button>
+        }
+      />
+
+      {/* OVERALL ATTENDANCE SUMMARY STATS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="p-4 border border-border/60">
+          <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+            <Users className="h-3.5 w-3.5 text-primary" /> Total Registered Students
+          </div>
+          <div className="text-2xl font-bold font-mono text-foreground mt-1">{totalRegisteredStudents} Students</div>
+        </Card>
+        <Card className="p-4 border border-emerald-500/30 bg-emerald-500/5">
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Total Present Students
+          </div>
+          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+            {presentStudentsCount} Present
+          </div>
+        </Card>
+        <Card className="p-4 border border-rose-500/30 bg-rose-500/5">
+          <div className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Total Absent Students</div>
+          <div className="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">
+            {Math.max(totalRegisteredStudents - presentStudentsCount, 0)} Absent
+          </div>
+        </Card>
+        <Card className="p-4 border border-primary/30 bg-primary/5">
+          <div className="text-xs text-primary font-semibold">Overall Attendance Rate</div>
+          <div className="text-2xl font-bold font-mono text-primary mt-1">
+            {totalRegisteredStudents > 0 ? ((presentStudentsCount / totalRegisteredStudents) * 100).toFixed(2) : "0.00"}%
+          </div>
+        </Card>
+      </div>
+
+      {/* ENROLLED BATCHES CARDS WITH REAL-TIME PRESENT/TOTAL STUDENTS METRICS */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <Layers className="h-4 w-4 text-primary" /> Active Enrolled Batches
+        </h3>
+
+        {batches.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {batches.map((b, idx) => {
+              const code = b.batchCode || b.name || `BATCH-0${idx + 1}`;
+              const matchingLogs = records.filter(r => r.subjectName === b.subjectName || r.subjectCode === code || records.length > 0);
+              const presentCountInBatch = matchingLogs.filter(r => r.status === "PRESENT").length;
+              const totalStudentsInBatch = totalRegisteredStudents;
+              const batchPct = totalStudentsInBatch > 0 ? parseFloat(((presentCountInBatch / totalStudentsInBatch) * 100).toFixed(2)) : 0;
+
+              return (
+                <Card key={b.id || idx} className="border border-border/60 shadow-xs overflow-hidden bg-card">
+                  <CardHeader className="bg-muted/30 p-4 border-b border-border/40">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="font-mono text-xs font-bold bg-primary/10 text-primary border-primary/20">
+                        {code}
+                      </Badge>
+                      <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px]">
+                        ENROLLED
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-base font-bold mt-2">{b.subjectName || "Grooming & Skills"}</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground flex flex-wrap items-center gap-3 mt-1">
+                      <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {b.branch || "Rajajinagar Jspiders"}</span>
+                      <span className="flex items-center gap-1"><User className="h-3 w-3" /> {b.trainerName || "Laxman Ashok Handenavar"}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3 font-mono" /> {b.classTiming || "04:45 PM"}</span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-medium">Batch Student Attendance:</span>
+                      <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                        {presentCountInBatch} / {totalStudentsInBatch} Present Students ({batchPct}%)
+                      </span>
+                    </div>
+                    <Progress value={batchPct} className="h-2 bg-muted" />
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-8 text-center border-dashed">
+            <Layers className="mx-auto h-8 w-8 text-muted-foreground/50" />
+            <p className="text-xs text-muted-foreground mt-2">No enrolled batches found.</p>
+          </Card>
+        )}
+      </div>
+
+      {/* DETAILED STUDENT ROSTER ATTENDANCE HISTORY TABLE WITH REALTIME UPDATES */}
+      <Card className="border border-border/60">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" /> Batch Attendance Roster & History ({totalRegisteredStudents} Registered Students)
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Live real-time roster of registered student names, emails, USNs, and attendance status for active batches.
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+            Realtime Auto-Syncing (3s)
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          {students.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Student Name</TableHead>
+                  <TableHead className="text-xs">Email Address</TableHead>
+                  <TableHead className="text-xs">USN / ID</TableHead>
+                  <TableHead className="text-xs">Time Marked</TableHead>
+                  <TableHead className="text-right text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.map((s: any, i: number) => {
+                  const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
+                  const email = s.email || "student@mentormatrix.com";
+                  const usn = s.usn || `STU100${s.id || i + 1}`;
+                  const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
+                  const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
+                  const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
+
+                  return (
+                    <TableRow key={s.id || i}>
+                      <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>{studentName}</span>
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
+                      <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          className={`text-[10px] font-bold ${
+                            isPresent
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                              : "bg-rose-600 hover:bg-rose-700 text-white"
+                          }`}
+                        >
+                          {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Subject / Session</TableHead>
+                  <TableHead className="text-xs">Time Marked</TableHead>
+                  <TableHead className="text-right text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {records.length > 0 ? (
+                  records.map((r, i) => (
+                    <TableRow key={r.id || i}>
+                      <TableCell className="font-mono text-xs font-medium">{r.date}</TableCell>
+                      <TableCell className="text-xs font-semibold">{r.subjectName || "Grooming & Skills"}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          className={`text-[10px] font-bold ${
+                            r.status === "PRESENT"
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                              : "bg-rose-600 hover:bg-rose-700 text-white"
+                          }`}
+                        >
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
+                      No attendance records logged yet. Use Smart QR Control to mark attendance.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ==========================================
+// ADMIN BATCHES MANAGEMENT VIEW
+// ==========================================
+function AdminBatchesView() {
+  const [batches, setBatches] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [records, setRecords] = useState<AttendanceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -42,21 +320,38 @@ function BatchesManagementPage() {
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [creating, setCreating] = useState(false);
 
-  const fetchBatches = async () => {
+  const fetchBatchesData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
-      setLoading(true);
-      const data = await api.getBatches();
-      setBatches(data || []);
+      const [batchesData, studentsData, reportData] = await Promise.all([
+        api.getBatches(),
+        api.getStudents(),
+        api.getAttendanceReport(),
+      ]);
+      setBatches(batchesData || []);
+      setStudents(studentsData || []);
+      setRecords(reportData || []);
     } catch {
-      toast.error("Failed to load batches from database.");
+      if (!silent) toast.error("Failed to load batches from database.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchBatches();
-  }, []);
+    fetchBatchesData(false);
+    const interval = setInterval(() => {
+      fetchBatchesData(true);
+    }, 3000);
+
+    const handleStorage = () => fetchBatchesData(true);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [fetchBatchesData]);
 
   const handleOpenModal = () => {
     setBatchCode("");
@@ -91,7 +386,7 @@ function BatchesManagementPage() {
       });
       toast.success(`Batch ${codeUpper} created successfully!`);
       setShowModal(false);
-      fetchBatches();
+      fetchBatchesData(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to create batch");
     } finally {
@@ -104,7 +399,7 @@ function BatchesManagementPage() {
     try {
       await api.deleteBatch(id);
       toast.success(`Batch ${code} deleted.`);
-      fetchBatches();
+      fetchBatchesData(false);
     } catch {
       toast.error("Failed to delete batch.");
     }
@@ -128,17 +423,17 @@ function BatchesManagementPage() {
     );
   });
 
+  const totalRegisteredStudents = students.length > 0 ? students.length : 1;
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Admin Batch Management"
-        subtitle="Create batch codes, assign faculty trainers, configure class timings, and manage academic cohorts."
+        title="Admin Batch & Attendance Control"
+        subtitle="Create batch codes, assign faculty trainers, configure class timings, and inspect real-time student batch attendance."
         actions={
-          role === "admin" ? (
-            <Button className="gap-2 text-xs font-semibold shadow-md" onClick={handleOpenModal}>
-              <Plus className="h-4 w-4" /> Create New Batch
-            </Button>
-          ) : undefined
+          <Button className="gap-2 text-xs font-semibold shadow-md" onClick={handleOpenModal}>
+            <Plus className="h-4 w-4" /> Create New Batch
+          </Button>
         }
       />
 
@@ -262,15 +557,15 @@ function BatchesManagementPage() {
         </span>
       </div>
 
-      {/* BATCHES TABLE */}
+      {/* BATCHES TABLE WITH REAL-TIME PRESENT/TOTAL STUDENTS COUNT */}
       <Card className="p-4 border border-border/60">
         <CardHeader className="px-0 pt-0 pb-3 flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" /> Created Batches List
+              <Layers className="h-5 w-5 text-primary" /> Active Batches & Student Presence
             </CardTitle>
             <CardDescription className="text-xs">
-              All batch codes listed here automatically populate in the Attendance Session Configuration.
+              Batch codes and real-time present vs registered student counts.
             </CardDescription>
           </div>
         </CardHeader>
@@ -287,46 +582,52 @@ function BatchesManagementPage() {
                   <TableHead>Branch</TableHead>
                   <TableHead>Start Time</TableHead>
                   <TableHead>Trainer / Faculty</TableHead>
-                  <TableHead>Start Date</TableHead>
+                  <TableHead>Present / Total Students</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBatches.map((b) => (
-                  <TableRow key={b.id || b.batchCode}>
-                    <TableCell className="font-mono text-xs font-bold text-primary flex items-center gap-1.5">
-                      <span>{b.batchCode || b.name}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                        onClick={() => handleCopyCode(b.batchCode || b.name)}
-                      >
-                        {copiedCode === (b.batchCode || b.name) ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-                      </Button>
-                    </TableCell>
-                    <TableCell className="text-xs font-semibold text-foreground">{b.subjectName || "Grooming"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{b.branch || "Rajajinagar Jspiders"}</TableCell>
-                    <TableCell className="text-xs font-mono">{b.classTiming || "04:45 PM"}</TableCell>
-                    <TableCell className="text-xs font-medium">{b.trainerName || "Laxman Ashok Handenavar"}</TableCell>
-                    <TableCell className="text-xs font-mono text-muted-foreground">{b.startDate || "2026-06-24"}</TableCell>
-                    <TableCell className="text-right flex items-center justify-end gap-2">
-                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                        ACTIVE
-                      </Badge>
-                      {role === "admin" && (
+                {filteredBatches.map((b) => {
+                  const code = b.batchCode || b.name;
+                  const matchingLogs = records.filter(r => r.subjectName === b.subjectName || r.subjectCode === code || records.length > 0);
+                  const presentCountInBatch = matchingLogs.filter(r => r.status === "PRESENT").length;
+
+                  return (
+                    <TableRow key={b.id || b.batchCode}>
+                      <TableCell className="font-mono text-xs font-bold text-primary flex items-center gap-1.5">
+                        <span>{code}</span>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleCopyCode(code)}
+                        >
+                          {copiedCode === code ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-foreground">{b.subjectName || "Grooming"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{b.branch || "Rajajinagar Jspiders"}</TableCell>
+                      <TableCell className="text-xs font-mono">{b.classTiming || "04:45 PM"}</TableCell>
+                      <TableCell className="text-xs font-medium">{b.trainerName || "Laxman Ashok Handenavar"}</TableCell>
+                      <TableCell className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {presentCountInBatch} / {totalRegisteredStudents} Present
+                      </TableCell>
+                      <TableCell className="text-right flex items-center justify-end gap-2">
+                        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                          ACTIVE
+                        </Badge>
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-                          onClick={() => handleDeleteBatch(b.id, b.batchCode || b.name)}
+                          onClick={() => handleDeleteBatch(b.id, code)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -337,13 +638,80 @@ function BatchesManagementPage() {
               <div className="text-sm font-bold">No Batches Created Yet</div>
               <p className="text-xs text-muted-foreground">Click the button below to create your first Batch Code.</p>
             </div>
-            {role === "admin" && (
-              <Button size="sm" className="gap-2 text-xs font-semibold" onClick={handleOpenModal}>
-                <Plus className="h-4 w-4" /> Create New Batch Code Now
-              </Button>
-            )}
+            <Button size="sm" className="gap-2 text-xs font-semibold" onClick={handleOpenModal}>
+              <Plus className="h-4 w-4" /> Create New Batch Code Now
+            </Button>
           </div>
         )}
+      </Card>
+
+      {/* ADMIN STUDENT ATTENDANCE ROSTER FOR PARTICULAR BATCH */}
+      <Card className="border border-border/60">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" /> Registered Students Attendance Roster ({totalRegisteredStudents} Students)
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              Detailed list of student names, emails, USNs, and live attendance status for active batches.
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+            Live Sync (3s)
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          {students.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Student Name</TableHead>
+                  <TableHead className="text-xs">Email Address</TableHead>
+                  <TableHead className="text-xs">USN / ID</TableHead>
+                  <TableHead className="text-xs">Time Marked</TableHead>
+                  <TableHead className="text-right text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.map((s: any, i: number) => {
+                  const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
+                  const email = s.email || "student@mentormatrix.com";
+                  const usn = s.usn || `STU100${s.id || i + 1}`;
+                  const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
+                  const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
+                  const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
+
+                  return (
+                    <TableRow key={s.id || i}>
+                      <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
+                        <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>{studentName}</span>
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
+                      <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge
+                          className={`text-[10px] font-bold ${
+                            isPresent
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                              : "bg-rose-600 hover:bg-rose-700 text-white"
+                          }`}
+                        >
+                          {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl">
+              No registered students found in portal.
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );

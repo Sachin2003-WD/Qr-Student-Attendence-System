@@ -72,6 +72,13 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("Dashboard stats fetched successfully", dashboard));
     }
 
+    @GetMapping("/analytics")
+    public ResponseEntity<ApiResponse<com.mentormatrix.dto.response.ReportsAnalyticsResponse>> getAnalytics() {
+        log.info("Fetching admin reports and analytics data");
+        com.mentormatrix.dto.response.ReportsAnalyticsResponse analytics = adminService.getAnalytics();
+        return ResponseEntity.ok(ApiResponse.success("Analytics data fetched successfully", analytics));
+    }
+
     @GetMapping("/students")
     public ResponseEntity<ApiResponse<PagedResponse<StudentResponse>>> getStudents(
             @RequestParam(defaultValue = "0") int page,

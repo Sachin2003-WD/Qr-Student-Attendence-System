@@ -1,5 +1,6 @@
 package com.mentormatrix.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
@@ -24,35 +25,51 @@ public class Admin extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "name", length = 100)
+    private String name;
+
+    @Column(name = "email", length = 100)
+    private String email;
+
+    @Column(name = "phone", length = 20)
+    private String phone;
+
+    @Column(name = "password", length = 255)
+    private String password;
+
     public String getName() {
-        return user != null ? user.getName() : null;
+        return name != null ? name : (user != null ? user.getName() : null);
     }
 
     public String getEmail() {
-        return user != null ? user.getEmail() : null;
+        return email != null ? email : (user != null ? user.getEmail() : null);
     }
 
     public String getPhone() {
-        return user != null ? user.getPhone() : null;
+        return phone != null ? phone : (user != null ? user.getPhone() : null);
     }
 
     public String getPassword() {
-        return user != null ? user.getPassword() : null;
+        return password != null ? password : (user != null ? user.getPassword() : null);
     }
 
     public void setName(String name) {
+        this.name = name;
         if (user != null) user.setName(name);
     }
 
     public void setEmail(String email) {
+        this.email = email;
         if (user != null) user.setEmail(email);
     }
 
     public void setPhone(String phone) {
+        this.phone = phone;
         if (user != null) user.setPhone(phone);
     }
 
     public void setPassword(String password) {
+        this.password = password;
         if (user != null) user.setPassword(password);
     }
 }

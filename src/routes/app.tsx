@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopbar } from "@/components/app-topbar";
@@ -18,20 +18,36 @@ export const Route = createFileRoute("/app")({
 
 function AppLayout() {
   const nav = useNavigate();
-  const token = api.getToken();
+  const [mounted, setMounted] = useState(false);
+  const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    setMounted(true);
+    const token = api.getToken();
+    if (token) {
+      setHasToken(true);
+    } else {
+      setHasToken(false);
       nav({ to: "/login" });
     }
-  }, [token, nav]);
+  }, [nav]);
 
-  if (!token) {
+  if (!mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4 text-center">
         <div className="space-y-2">
-          <div className="text-lg font-semibold">Authentication required</div>
-          <div className="text-sm text-muted-foreground">Redirecting to sign in...</div>
+          <div className="text-sm font-semibold text-primary animate-pulse">Loading Workspace…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasToken) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4 text-center">
+        <div className="space-y-2">
+          <div className="text-base font-semibold">Authentication required</div>
+          <div className="text-xs text-muted-foreground">Redirecting to sign in...</div>
         </div>
       </div>
     );

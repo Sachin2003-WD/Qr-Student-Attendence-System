@@ -19,7 +19,7 @@ export interface AuthResponse {
   tokenType?: string;
   email: string;
   name?: string;
-  role: "STUDENT" | "FACULTY" | "ADMIN" | "MENTOR";
+  role: "STUDENT" | "ADMIN";
   expiresIn?: number;
   message?: string;
 }
@@ -200,6 +200,20 @@ function removeLocalBatch(batchIdOrCode: any): void {
   setItem("sa.batches", JSON.stringify(updated));
 }
 
+function getLocalAdmins(): any[] {
+  try {
+    const raw = getItem("sa.registered_admins");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+function saveLocalAdmin(admin: any): void {
+  const existing = getLocalAdmins();
+  const updated = [admin, ...existing.filter(a => a.email !== admin.email)];
+  setItem("sa.registered_admins", JSON.stringify(updated));
+}
+
 // Validate Token strictly
 function validateQRToken(token: string): { valid: boolean; subject?: SubjectSession; message?: string } {
   const cleaned = token.trim();
@@ -270,7 +284,7 @@ export const api = {
     const email = getItem("sa.email") || "user@college.edu";
     const name = getItem("sa.name") || email.split("@")[0] || "User";
     try {
-      const endpoint = role === "admin" ? "/admin/profile" : role === "faculty" || role === "mentor" ? "/faculty/profile" : "/student/profile";
+      const endpoint = role === "admin" ? "/admin/profile" : "/student/profile";
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: getAuthHeader(),
       });
@@ -309,161 +323,120 @@ export const api = {
     }
   },
 
-  forgotPassword: async (email: string): Promise<any> => {
+  forgotPassword: async (email: string, role: string = "student"): Promise<any> => {
+    const roleLower = role.toLowerCase();
+    const endpoint = roleLower === "admin" ? "/auth/admin/forgot-password" : "/auth/student/forgot-password";
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       return await handleResponse(res);
-    } catch {
-      return { success: true, message: `Password reset link sent to ${email}` };
+    } catch (err: any) {
+      if (err.message && !err.message.includes("Failed to fetch")) {
+        throw err;
+      }
+      return { success: true, message: `OTP / Password reset link sent to ${email}` };
     }
   },
 
-  resetPassword: async (payload: { token?: string; password?: string }): Promise<any> => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      return await handleResponse(res);
-    } catch {
-      return { success: true, message: "Password reset successful" };
-    }
-  },
-
-  register: async (payload: any, role: string = "student"): Promise<AuthResponse> => {
+  resetPassword: async (payload: { email: string; otp: string; newPassword: string; confirmPassword: string }, role: string = "student"): Promise<any> => {
     const roleLower = role.toLowerCase();
-    const endpoint = roleLower === "admin" ? "/auth/admin/register" : roleLower === "faculty" || roleLower === "mentor" ? "/auth/faculty/register" : "/auth/student/register";
+    const endpoint = roleLower === "admin" ? "/auth/admin/reset-password" : "/auth/student/reset-password";
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await handleResponse<AuthResponse>(res);
-      if (data.email) setItem("sa.email", data.email);
-      if (payload.name) setItem("sa.name", payload.name);
-      return data;
+      return await handleResponse(res);
     } catch (err: any) {
       if (err.message && !err.message.includes("Failed to fetch")) {
         throw err;
       }
-      const dummyToken = "local_token_" + Date.now();
-      const normRole = (roleLower === "admin" ? "ADMIN" : roleLower === "faculty" || roleLower === "mentor" ? "FACULTY" : "STUDENT") as any;
-      if (payload.name) setItem("sa.name", payload.name);
-      if (payload.email) setItem("sa.email", payload.email);
-      return {
-        accessToken: dummyToken,
-        token: dummyToken,
-        email: payload.email || "user@college.edu",
-        role: normRole,
-        message: "Registration successful"
-      };
+      return { success: true, message: "Password reset successful" };
     }
   },
 
-  registerStudent: async (payload: any): Promise<AuthResponse> => {
-    return api.register(payload, "student");
+  register: async (payload: any, role: string = "student"): Promise<AuthResponse> => {
+    const roleLower = role.toLowerCase();
+    if (roleLower === "admin") return api.registerAdmin(payload);
+    return api.registerStudent(payload);
   },
 
-  registerFaculty: async (payload: any): Promise<AuthResponse> => {
-    return api.register(payload, "faculty");
+  registerStudent: async (payload: any): Promise<AuthResponse> => {
+    const res = await fetch(`${API_BASE_URL}/auth/student/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await handleResponse<AuthResponse>(res);
+    const token = data.token || data.accessToken || "";
+    if (token) {
+      setItem("sa.token", token);
+      setItem("sa.role", "student");
+      setItem("sa.email", data.email || payload.email);
+      if (payload.name) setItem("sa.name", payload.name);
+    }
+    return data;
   },
 
   registerAdmin: async (payload: any): Promise<AuthResponse> => {
-    return api.register(payload, "admin");
+    const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await handleResponse<AuthResponse>(res);
+    const token = data.token || data.accessToken || "";
+    if (token) {
+      setItem("sa.token", token);
+      setItem("sa.role", "admin");
+      setItem("sa.email", data.email || payload.email);
+      if (payload.name) setItem("sa.name", payload.name);
+    }
+    return data;
   },
 
   login: async (email: string, pass: string, role: string = "student"): Promise<AuthResponse> => {
     const roleLower = role.toLowerCase();
     if (roleLower === "admin") return api.loginAdmin(email, pass);
-    if (roleLower === "faculty" || roleLower === "mentor") return api.loginFaculty(email, pass);
     return api.loginStudent(email, pass);
   },
 
   loginStudent: async (email: string, pass: string): Promise<AuthResponse> => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: pass }),
-      });
-      const data = await handleResponse<AuthResponse>(res);
-      if (data.token || data.accessToken) {
-        const token = data.token || data.accessToken || "";
-        setItem("sa.token", token);
-        setItem("sa.role", "student");
-        setItem("sa.email", data.email || email);
-      }
-      return data;
-    } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch")) {
-        throw err;
-      }
-      const dummyToken = "local_token_" + Date.now();
-      setItem("sa.token", dummyToken);
+    const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pass }),
+    });
+    const data = await handleResponse<AuthResponse>(res);
+    const token = data.token || data.accessToken || "";
+    if (token) {
+      setItem("sa.token", token);
       setItem("sa.role", "student");
-      setItem("sa.email", email);
-      return { accessToken: dummyToken, token: dummyToken, email, role: "STUDENT" };
+      setItem("sa.email", data.email || email);
+      if (data.name) setItem("sa.name", data.name);
     }
-  },
-
-  loginFaculty: async (email: string, pass: string): Promise<AuthResponse> => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/faculty/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: pass }),
-      });
-      const data = await handleResponse<AuthResponse>(res);
-      if (data.token || data.accessToken) {
-        const token = data.token || data.accessToken || "";
-        setItem("sa.token", token);
-        setItem("sa.role", "faculty");
-        setItem("sa.email", data.email || email);
-      }
-      return data;
-    } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch")) {
-        throw err;
-      }
-      const dummyToken = "local_token_" + Date.now();
-      setItem("sa.token", dummyToken);
-      setItem("sa.role", "faculty");
-      setItem("sa.email", email);
-      return { accessToken: dummyToken, token: dummyToken, email, role: "FACULTY" };
-    }
+    return data;
   },
 
   loginAdmin: async (email: string, pass: string): Promise<AuthResponse> => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: pass }),
-      });
-      const data = await handleResponse<AuthResponse>(res);
-      if (data.token || data.accessToken) {
-        const token = data.token || data.accessToken || "";
-        setItem("sa.token", token);
-        setItem("sa.role", "admin");
-        setItem("sa.email", data.email || email);
-      }
-      return data;
-    } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch")) {
-        throw err;
-      }
-      const dummyToken = "local_token_" + Date.now();
-      setItem("sa.token", dummyToken);
+    const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pass }),
+    });
+    const data = await handleResponse<AuthResponse>(res);
+    const token = data.token || data.accessToken || "";
+    if (token) {
+      setItem("sa.token", token);
       setItem("sa.role", "admin");
-      setItem("sa.email", email);
-      return { accessToken: dummyToken, token: dummyToken, email, role: "ADMIN" };
+      setItem("sa.email", data.email || email);
+      if (data.name) setItem("sa.name", data.name);
     }
+    return data;
   },
 
   getDailyQR: async (subjectCode?: string): Promise<QRCodeResponse> => {
@@ -774,23 +747,81 @@ export const api = {
   },
 
   getAdmins: async (): Promise<any[]> => {
+    let remoteAdmins: any[] = [];
     try {
       const res = await fetch(`${API_BASE_URL}/admin/admins`, {
         headers: getAuthHeader(),
       });
-      return await handleResponse(res);
+      const data = await handleResponse<any>(res);
+      if (Array.isArray(data)) {
+        remoteAdmins = data;
+      }
     } catch {
-      return [];
+      // ignore
     }
+
+    const localAdmins = getLocalAdmins();
+    const map = new Map<string, any>();
+
+    // 1. Always include active logged in admin
+    const activeEmail = getItem("sa.email") || "admin@mentormatrix.com";
+    const activeName = getItem("sa.name") || "System Administrator";
+    if (activeEmail) {
+      map.set(activeEmail.toLowerCase(), {
+        id: 1,
+        name: activeName,
+        email: activeEmail,
+        phone: "9876543210",
+        active: true,
+        role: "ADMIN"
+      });
+    }
+
+    // 2. Include local registered admins
+    for (const a of localAdmins) {
+      if (a && a.email) {
+        map.set(a.email.toLowerCase(), a);
+      }
+    }
+
+    // 3. Include remote database admins
+    for (const a of remoteAdmins) {
+      if (a && a.email) {
+        map.set(a.email.toLowerCase(), {
+          id: a.id || Date.now(),
+          name: a.name || a.email.split("@")[0],
+          email: a.email,
+          phone: a.phone || "9876543210",
+          active: a.active !== false,
+          role: "ADMIN"
+        });
+      }
+    }
+
+    return Array.from(map.values());
   },
 
   createAdmin: async (payload: { name: string; email: string; phone: string; password: string }): Promise<any> => {
-    const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getAuthHeader() },
-      body: JSON.stringify(payload),
-    });
-    return handleResponse(res);
+    const body = { ...payload, confirmPassword: payload.password };
+    const adminObj = {
+      id: Date.now(),
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone || "9876543210",
+      active: true,
+      role: "ADMIN"
+    };
+    saveLocalAdmin(adminObj);
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify(body),
+      });
+      return await handleResponse(res);
+    } catch {
+      return adminObj;
+    }
   },
 
   getBatches: async (): Promise<any[]> => {
@@ -843,5 +874,67 @@ export const api = {
     } catch {
       return { success: true, message: "Batch deleted successfully" };
     }
+  },
+
+  getStudents: async (page = 0, size = 100): Promise<any[]> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/students?page=${page}&size=${size}`, {
+        headers: getAuthHeader(),
+      });
+      const data = await handleResponse<any>(res);
+      return data.content || data.items || (Array.isArray(data) ? data : []);
+    } catch {
+      return [];
+    }
+  },
+
+  getReportsAnalytics: async (): Promise<any> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/analytics`, {
+        headers: getAuthHeader(),
+      });
+      return await handleResponse(res);
+    } catch {
+      return null;
+    }
+  },
+
+  exportPdfReport: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/attendance/export/pdf`, { headers: getAuthHeader() });
+    if (!res.ok) throw new Error("Failed to generate PDF report");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reports_analytics_${new Date().toISOString().split("T")[0]}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  },
+
+  exportExcelReport: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/attendance/export/excel`, { headers: getAuthHeader() });
+    if (!res.ok) throw new Error("Failed to generate Excel report");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reports_analytics_${new Date().toISOString().split("T")[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  },
+
+  exportCsvReport: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE_URL}/attendance/export/csv`, { headers: getAuthHeader() });
+    if (!res.ok) throw new Error("Failed to generate CSV report");
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reports_analytics_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   },
 };
