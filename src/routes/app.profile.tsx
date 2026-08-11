@@ -100,10 +100,10 @@ function Profile() {
                   <div className="grid gap-2 sm:col-span-2"><Label>Interests</Label><Input defaultValue="Machine Learning, Web Development" /></div>
                 </>
               )}
-              {role === "faculty" && (
+              {role === "admin" && (
                 <>
-                  <div className="grid gap-2 sm:col-span-2"><Label>Expertise</Label><Input defaultValue="Data Structures, Java, Algorithms" /></div>
-                  <div className="grid gap-2 sm:col-span-2"><Label>Bio</Label><Textarea rows={3} defaultValue="Faculty member in Computer Science Department." /></div>
+                  <div className="grid gap-2 sm:col-span-2"><Label>System Administrator Role</Label><Input defaultValue="Full System & Batch Access" disabled /></div>
+                  <div className="grid gap-2 sm:col-span-2"><Label>Department Notes</Label><Textarea rows={3} defaultValue="Administrator in Smart Attendance Control." /></div>
                 </>
               )}
               <div className="sm:col-span-2 flex justify-end gap-2">

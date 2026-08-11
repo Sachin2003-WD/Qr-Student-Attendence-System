@@ -9,9 +9,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserPlus, ShieldCheck, AlertCircle, RefreshCw, CheckCircle2, User } from "lucide-react";
-import { api, type AdminResponse } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { useApp } from "@/lib/app-context";
 import { toast } from "sonner";
+
+export interface AdminResponse {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  role?: string;
+}
 
 export const Route = createFileRoute("/app/admins")({
   head: () => ({
@@ -239,7 +247,7 @@ function Admins() {
                     const displayName = a.name || (a.email ? a.email.split("@")[0] : "System Admin");
                     const initials = displayName
                       .split(" ")
-                      .map((n) => n[0])
+                      .map((n: string) => n[0])
                       .slice(0, 2)
                       .join("")
                       .toUpperCase();
