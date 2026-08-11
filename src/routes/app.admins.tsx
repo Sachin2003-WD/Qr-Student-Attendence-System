@@ -19,6 +19,7 @@ export interface AdminResponse {
   email: string;
   phone?: string;
   role?: string;
+  active?: boolean;
 }
 
 export const Route = createFileRoute("/app/admins")({
