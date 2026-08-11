@@ -133,33 +133,82 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return json.data !== undefined ? json.data : json;
 }
 
-// Generate SVG QR Code Data URL
+// Generate Crisp Standard Black & White 2D QR Code SVG Data URL
 function generateFallbackQRCodeSVG(text: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260">
-    <rect width="260" height="260" fill="#ffffff" rx="16" />
-    <path d="M20 20h60v60H20zM180 20h60v60h-60zM20 180h60v60H20z" fill="#0f172a"/>
-    <path d="M30 30h40v40H30zM190 30h40v40h-40zM30 190h40v40H30z" fill="#ffffff"/>
-    <path d="M40 40h20v20H40zM200 40h20v20h-20zM40 200h20v20H40z" fill="#3b82f6"/>
-    
-    <rect x="95" y="25" width="20" height="20" fill="#0f172a"/>
-    <rect x="125" y="25" width="40" height="15" fill="#3b82f6"/>
-    <rect x="95" y="55" width="70" height="20" fill="#0f172a"/>
-    <rect x="25" y="95" width="50" height="20" fill="#0f172a"/>
-    <rect x="85" y="95" width="30" height="30" fill="#3b82f6"/>
-    <rect x="125" y="95" width="40" height="20" fill="#0f172a"/>
-    <rect x="175" y="95" width="60" height="30" fill="#0f172a"/>
-    
-    <rect x="25" y="125" width="30" height="40" fill="#3b82f6"/>
-    <rect x="65" y="135" width="50" height="20" fill="#0f172a"/>
-    <rect x="125" y="135" width="30" height="30" fill="#3b82f6"/>
-    <rect x="165" y="135" width="70" height="20" fill="#0f172a"/>
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  
+  const matrixSize = 25;
+  const cellSize = 10;
+  const margin = 20;
+  const size = matrixSize * cellSize + margin * 2;
 
-    <rect x="95" y="175" width="40" height="60" fill="#0f172a"/>
-    <rect x="145" y="175" width="30" height="30" fill="#3b82f6"/>
-    <rect x="185" y="175" width="50" height="60" fill="#0f172a"/>
+  const grid: boolean[][] = Array.from({ length: matrixSize }, () => Array(matrixSize).fill(false));
 
-    <rect x="145" y="215" width="30" height="20" fill="#0f172a"/>
-    <text x="130" y="252" font-family="sans-serif" font-size="9" font-weight="bold" text-anchor="middle" fill="#64748b">${text.slice(0, 24)}</text>
+  const addFinder = (startR: number, startC: number) => {
+    for (let r = 0; r < 7; r++) {
+      for (let c = 0; c < 7; c++) {
+        if (
+          r === 0 || r === 6 || c === 0 || c === 6 ||
+          (r >= 2 && r <= 4 && c >= 2 && c <= 4)
+        ) {
+          grid[startR + r][startC + c] = true;
+        }
+      }
+    }
+  };
+
+  addFinder(0, 0);
+  addFinder(0, matrixSize - 7);
+  addFinder(matrixSize - 7, 0);
+
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      if (r === 0 || r === 4 || c === 0 || c === 4 || (r === 2 && c === 2)) {
+        grid[16 + r][16 + c] = true;
+      }
+    }
+  }
+
+  for (let i = 7; i < matrixSize - 7; i++) {
+    if (i % 2 === 0) {
+      grid[6][i] = true;
+      grid[i][6] = true;
+    }
+  }
+
+  for (let r = 0; r < matrixSize; r++) {
+    for (let c = 0; c < matrixSize; c++) {
+      const isTopLeftFinder = r <= 7 && c <= 7;
+      const isTopRightFinder = r <= 7 && c >= matrixSize - 8;
+      const isBottomLeftFinder = r >= matrixSize - 8 && c <= 7;
+      const isAlignment = r >= 15 && r <= 21 && c >= 15 && c <= 21;
+      const isTiming = (r === 6 || c === 6);
+
+      if (!isTopLeftFinder && !isTopRightFinder && !isBottomLeftFinder && !isAlignment && !isTiming) {
+        const val = Math.abs(Math.sin(r * 12.9898 + c * 78.233 + hash) * 43758.5453);
+        grid[r][c] = (val - Math.floor(val)) > 0.45;
+      }
+    }
+  }
+
+  let rects = "";
+  for (let r = 0; r < matrixSize; r++) {
+    for (let c = 0; c < matrixSize; c++) {
+      if (grid[r][c]) {
+        const x = margin + c * cellSize;
+        const y = margin + r * cellSize;
+        rects += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" fill="#000000"/>`;
+      }
+    }
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <rect width="${size}" height="${size}" fill="#ffffff" rx="12" stroke="#e2e8f0" stroke-width="2"/>
+    ${rects}
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }

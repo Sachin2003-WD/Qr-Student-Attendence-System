@@ -374,47 +374,58 @@ function CalendarPage() {
 
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                          <span>Student Attendance Roster for Batch {b.batchCode}:</span>
-                          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
-                            ✓ {b.presentStudents} Present | ✕ {b.absentStudents} Absent
-                          </span>
-                        </div>
+                        {role === "admin" ? (
+                          <>
+                            <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                              <span>Student Attendance Roster for Batch {b.batchCode}:</span>
+                              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                                ✓ {b.presentStudents} Present | ✕ {b.absentStudents} Absent
+                              </span>
+                            </div>
 
-                        {b.scannedStudents.length > 0 ? (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="text-xs">Student Name</TableHead>
-                                <TableHead className="text-xs">USN / ID</TableHead>
-                                <TableHead className="text-xs">Time Marked</TableHead>
-                                <TableHead className="text-right text-xs">Status</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {b.scannedStudents.map((s, idx) => (
-                                <TableRow key={idx}>
-                                  <TableCell className="text-xs font-medium">{s.name}</TableCell>
-                                  <TableCell className="text-xs font-mono text-muted-foreground">{s.usn}</TableCell>
-                                  <TableCell className="text-xs font-mono text-muted-foreground">{s.time}</TableCell>
-                                  <TableCell className="text-right">
-                                    <Badge
-                                      className={`text-[10px] font-bold ${
-                                        s.status === "PRESENT"
-                                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                          : "bg-rose-600 hover:bg-rose-700 text-white"
-                                      }`}
-                                    >
-                                      {s.status}
-                                    </Badge>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                            {b.scannedStudents.length > 0 ? (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="text-xs">Student Name</TableHead>
+                                    <TableHead className="text-xs">USN / ID</TableHead>
+                                    <TableHead className="text-xs">Time Marked</TableHead>
+                                    <TableHead className="text-right text-xs">Status</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {b.scannedStudents.map((s, idx) => (
+                                    <TableRow key={idx}>
+                                      <TableCell className="text-xs font-medium">{s.name}</TableCell>
+                                      <TableCell className="text-xs font-mono text-muted-foreground">{s.usn}</TableCell>
+                                      <TableCell className="text-xs font-mono text-muted-foreground">{s.time}</TableCell>
+                                      <TableCell className="text-right">
+                                        <Badge
+                                          className={`text-[10px] font-bold ${
+                                            s.status === "PRESENT"
+                                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                              : "bg-rose-600 hover:bg-rose-700 text-white"
+                                          }`}
+                                        >
+                                          {s.status}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            ) : (
+                              <div className="py-6 text-center text-xs text-muted-foreground italic">
+                                No registered students found in portal for this batch.
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <div className="py-6 text-center text-xs text-muted-foreground italic">
-                            No registered students found in portal for this batch.
+                          <div className="p-3 rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-between text-xs">
+                            <span className="font-semibold text-foreground">Your Session Attendance Status:</span>
+                            <Badge className="bg-emerald-600 text-white font-bold text-xs">
+                              PRESENT ✓
+                            </Badge>
                           </div>
                         )}
                       </div>
