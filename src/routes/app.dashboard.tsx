@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApp } from "@/lib/app-context";
 import {
-  api, TODAY_SUBJECT_SESSIONS, type AttendanceResponse,
-  type AttendanceSummaryResponse
+  api, TODAY_SUBJECT_SESSIONS, getRealtimeSubjectSessions, type AttendanceResponse,
+  type AttendanceSummaryResponse, type QRCodeResponse
 } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -137,7 +137,7 @@ function StudentLiveDash() {
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-2.5">
-            {activeSessions.map((s, idx) => (
+            {activeSessions.map((s: any, idx: number) => (
               <div
                 key={s.code || idx}
                 onClick={() => setSelectedSubject(s.code)}

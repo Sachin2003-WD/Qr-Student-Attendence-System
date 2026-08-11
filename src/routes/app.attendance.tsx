@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApp } from "@/lib/app-context";
 import {
-  api, TODAY_SUBJECT_SESSIONS, type QRCodeResponse, type AttendanceResponse,
+  api, TODAY_SUBJECT_SESSIONS, getRealtimeSubjectSessions, type QRCodeResponse, type AttendanceResponse,
   type AttendanceSummaryResponse
 } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -157,7 +157,7 @@ function StudentAttendanceView() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
-            {activeSessions.map((s, idx) => (
+            {activeSessions.map((s: any, idx: number) => (
               <div key={s.code || idx} className="p-3.5 rounded-xl border border-border/60 bg-muted/20 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-foreground">{s.name}</span>
