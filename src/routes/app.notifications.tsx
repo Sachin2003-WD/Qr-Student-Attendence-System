@@ -80,7 +80,7 @@ function saveStoredNotifications(notifs: AppNotification[]): void {
 }
 
 function NotificationsPage() {
-  const { role, user } = useApp();
+  const { role, userName, userEmail } = useApp();
   const [notificationsList, setNotificationsList] = useState<AppNotification[]>([]);
   const [students, setStudents] = useState<any[]>([]);
 
@@ -145,7 +145,7 @@ function NotificationsPage() {
         id: `notif-${Date.now()}`,
         title: titleInput.trim(),
         body: bodyInput.trim(),
-        sender: user?.name ? `${user.name} (Administrator)` : "System Administrator",
+        sender: userName ? `${userName} (Administrator)` : "System Administrator",
         recipient: targetRecipient,
         recipientName: targetRecipientName,
         priority,
@@ -169,8 +169,8 @@ function NotificationsPage() {
   };
 
   // Filter notifications based on role
-  const currentUserEmail = user?.email || localStorage.getItem("sa.email") || "";
-  const currentUserName = user?.name || localStorage.getItem("sa.name") || "";
+  const currentUserEmail = userEmail || localStorage.getItem("sa.email") || "";
+  const currentUserName = userName || localStorage.getItem("sa.name") || "";
 
   const visibleNotifications = notificationsList.filter((n) => {
     if (role === "admin") return true; // Admin sees all sent & system notifications
