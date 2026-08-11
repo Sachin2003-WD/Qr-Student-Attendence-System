@@ -58,7 +58,7 @@ export function AppSidebar() {
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold">Smart Attendance</div>
+            <div className="truncate text-sm font-bold tracking-tight">Attendrix</div>
             <div className="truncate text-xs text-muted-foreground">{roleLabel} Workspace</div>
           </div>
         </Link>

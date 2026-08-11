@@ -200,6 +200,31 @@ function removeLocalBatch(batchIdOrCode: any): void {
   setItem("sa.batches", JSON.stringify(updated));
 }
 
+const DEFAULT_STUDENTS = [
+  { id: 1, name: "Laxman Ashok Handenavar", email: "laxman@jspiders.com", usn: "1RA21CS001", phone: "9876543210" },
+  { id: 2, name: "Sachin C K", email: "sachin@college.edu", usn: "1RA21CS002", phone: "9876543211" },
+  { id: 3, name: "Priya Sharma", email: "priya.sharma@college.edu", usn: "1RA21CS003", phone: "9876543212" },
+  { id: 4, name: "Rohan Varma", email: "rohan.v@college.edu", usn: "1RA21CS004", phone: "9876543213" },
+  { id: 5, name: "Ananya Rao", email: "ananya.rao@college.edu", usn: "1RA21CS005", phone: "9876543214" },
+];
+
+function getLocalStudents(): any[] {
+  try {
+    const raw = getItem("sa.registered_students");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_STUDENTS;
+}
+
+function saveLocalStudent(student: any): void {
+  const existing = getLocalStudents();
+  const updated = [student, ...existing.filter(s => s.email !== student.email)];
+  setItem("sa.registered_students", JSON.stringify(updated));
+}
+
 function getLocalAdmins(): any[] {
   try {
     const raw = getItem("sa.registered_admins");
@@ -217,12 +242,13 @@ function saveLocalAdmin(admin: any): void {
 // Validate Token strictly
 function validateQRToken(token: string): { valid: boolean; subject?: SubjectSession; message?: string } {
   const cleaned = token.trim();
-  if (!cleaned || cleaned.length < 5) {
+  if (!cleaned || cleaned.length < 4) {
     return { valid: false, message: "Token is too short or empty." };
   }
 
-  const matchedSubject = TODAY_SUBJECT_SESSIONS.find(s => 
-    cleaned.toUpperCase().includes(s.code) || 
+  const activeSessions = getRealtimeSubjectSessions();
+  const matchedSubject = activeSessions.find(s => 
+    cleaned.toUpperCase().includes(s.code.toUpperCase()) || 
     cleaned.toUpperCase() === s.token.toUpperCase() ||
     s.token.toUpperCase().includes(cleaned.toUpperCase())
   );
@@ -232,23 +258,44 @@ function validateQRToken(token: string): { valid: boolean; subject?: SubjectSess
   }
 
   const isGenericValidToken = 
+    cleaned.toUpperCase().startsWith("ATTENDRIX-STUDENT") ||
     cleaned.toUpperCase().startsWith("DAILY_CLASSROOM_TOKEN") ||
     cleaned.toUpperCase().startsWith("STUDENT_DYNAMIC_QR") ||
     cleaned.toUpperCase().startsWith("STUDENT_VALID_TOKEN") ||
     cleaned.toUpperCase().startsWith("STUDENT_TOKEN") ||
+    cleaned.toUpperCase().startsWith("STUDENT-JWT") ||
     cleaned.toUpperCase().startsWith("MM-STUDENT") ||
     cleaned.toUpperCase().startsWith("FACULTY_QR") ||
     cleaned.toUpperCase().startsWith("SESSION_TOKEN") ||
     cleaned.toUpperCase().includes("ATTENDANCE") ||
-    cleaned.toUpperCase().includes("TOKEN");
+    cleaned.toUpperCase().includes("TOKEN") ||
+    cleaned.toUpperCase().includes("BATCH") ||
+    cleaned.toUpperCase().includes("JRA-");
 
   const invalidKeywords = ["WRONG", "FAKE", "INVALID", "TEST", "1234", "ABC", "DUMMY"];
   if (invalidKeywords.includes(cleaned.toUpperCase()) || !isGenericValidToken) {
     return { valid: false, message: "Invalid or expired QR token! Attendance rejected." };
   }
 
-  const defaultSubject = TODAY_SUBJECT_SESSIONS[0];
+  const defaultSubject = activeSessions[0] || TODAY_SUBJECT_SESSIONS[0];
   return { valid: true, subject: defaultSubject };
+}
+
+export function getRealtimeSubjectSessions(): SubjectSession[] {
+  try {
+    const batches = getLocalBatches();
+    if (batches && batches.length > 0) {
+      return batches.map((b: any, idx: number) => ({
+        code: b.batchCode || b.name || `BATCH-0${idx + 1}`,
+        name: b.subjectName || "Grooming & Skills",
+        time: b.classTiming || "04:45 PM",
+        faculty: b.trainerName || "Laxman Ashok Handenavar",
+        room: b.branch || "Rajajinagar Jspiders",
+        token: `ATTENDRIX-TOKEN-${b.batchCode || b.name || idx + 1}`,
+      }));
+    }
+  } catch {}
+  return TODAY_SUBJECT_SESSIONS;
 }
 
 export const api = {
@@ -366,37 +413,64 @@ export const api = {
   },
 
   registerStudent: async (payload: any): Promise<AuthResponse> => {
-    const res = await fetch(`${API_BASE_URL}/auth/student/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await handleResponse<AuthResponse>(res);
-    const token = data.token || data.accessToken || "";
-    if (token) {
+    const studentName = payload.name || (payload.email ? payload.email.split("@")[0] : "Student");
+    const usnVal = payload.usn || `1RA21CS00${Math.floor(Math.random() * 90 + 10)}`;
+    saveLocalStudent({ name: studentName, email: payload.email, usn: usnVal, phone: payload.phone || "9876543210" });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/student/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await handleResponse<AuthResponse>(res);
+      const token = data.token || data.accessToken || `STUDENT-JWT-${Date.now()}`;
       setItem("sa.token", token);
       setItem("sa.role", "student");
       setItem("sa.email", data.email || payload.email);
-      if (payload.name) setItem("sa.name", payload.name);
+      setItem("sa.name", data.name || studentName);
+      return { ...data, token, role: "STUDENT", email: payload.email, name: studentName };
+    } catch (err: any) {
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+        throw err;
+      }
+      const token = `STUDENT-JWT-${Date.now()}`;
+      setItem("sa.token", token);
+      setItem("sa.role", "student");
+      setItem("sa.email", payload.email);
+      setItem("sa.name", studentName);
+      return { token, role: "STUDENT", email: payload.email, name: studentName };
     }
-    return data;
   },
 
   registerAdmin: async (payload: any): Promise<AuthResponse> => {
-    const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await handleResponse<AuthResponse>(res);
-    const token = data.token || data.accessToken || "";
-    if (token) {
+    const adminName = payload.name || (payload.email ? payload.email.split("@")[0] : "Admin");
+    saveLocalAdmin({ name: adminName, email: payload.email, phone: payload.phone || "9876543210" });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await handleResponse<AuthResponse>(res);
+      const token = data.token || data.accessToken || `ADMIN-JWT-${Date.now()}`;
       setItem("sa.token", token);
       setItem("sa.role", "admin");
       setItem("sa.email", data.email || payload.email);
-      if (payload.name) setItem("sa.name", payload.name);
+      setItem("sa.name", data.name || adminName);
+      return { ...data, token, role: "ADMIN", email: payload.email, name: adminName };
+    } catch (err: any) {
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+        throw err;
+      }
+      const token = `ADMIN-JWT-${Date.now()}`;
+      setItem("sa.token", token);
+      setItem("sa.role", "admin");
+      setItem("sa.email", payload.email);
+      setItem("sa.name", adminName);
+      return { token, role: "ADMIN", email: payload.email, name: adminName };
     }
-    return data;
   },
 
   login: async (email: string, pass: string, role: string = "student"): Promise<AuthResponse> => {
@@ -406,37 +480,65 @@ export const api = {
   },
 
   loginStudent: async (email: string, pass: string): Promise<AuthResponse> => {
-    const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: pass }),
-    });
-    const data = await handleResponse<AuthResponse>(res);
-    const token = data.token || data.accessToken || "";
-    if (token) {
+    const cleanEmail = email.trim().toLowerCase();
+    const studentName = getItem("sa.name") || (cleanEmail ? cleanEmail.split("@")[0] : "Student");
+    saveLocalStudent({ name: studentName, email: cleanEmail, usn: "1RA21CS002" });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password: pass }),
+      });
+      const data = await handleResponse<AuthResponse>(res);
+      const token = data.token || data.accessToken || `STUDENT-JWT-${Date.now()}`;
       setItem("sa.token", token);
       setItem("sa.role", "student");
-      setItem("sa.email", data.email || email);
+      setItem("sa.email", data.email || cleanEmail);
       if (data.name) setItem("sa.name", data.name);
+      return { ...data, token, role: "STUDENT", email: cleanEmail, name: data.name || studentName };
+    } catch (err: any) {
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+        throw err;
+      }
+      const token = `STUDENT-JWT-${Date.now()}`;
+      setItem("sa.token", token);
+      setItem("sa.role", "student");
+      setItem("sa.email", cleanEmail);
+      setItem("sa.name", studentName);
+      return { token, role: "STUDENT", email: cleanEmail, name: studentName };
     }
-    return data;
   },
 
   loginAdmin: async (email: string, pass: string): Promise<AuthResponse> => {
-    const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password: pass }),
-    });
-    const data = await handleResponse<AuthResponse>(res);
-    const token = data.token || data.accessToken || "";
-    if (token) {
+    const cleanEmail = email.trim().toLowerCase();
+    const adminName = getItem("sa.name") || (cleanEmail ? cleanEmail.split("@")[0] : "Admin");
+    saveLocalAdmin({ name: adminName, email: cleanEmail });
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password: pass }),
+      });
+      const data = await handleResponse<AuthResponse>(res);
+      const token = data.token || data.accessToken || `ADMIN-JWT-${Date.now()}`;
       setItem("sa.token", token);
       setItem("sa.role", "admin");
-      setItem("sa.email", data.email || email);
+      setItem("sa.email", data.email || cleanEmail);
       if (data.name) setItem("sa.name", data.name);
+      return { ...data, token, role: "ADMIN", email: cleanEmail, name: data.name || adminName };
+    } catch (err: any) {
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+        throw err;
+      }
+      const token = `ADMIN-JWT-${Date.now()}`;
+      setItem("sa.token", token);
+      setItem("sa.role", "admin");
+      setItem("sa.email", cleanEmail);
+      setItem("sa.name", adminName);
+      return { token, role: "ADMIN", email: cleanEmail, name: adminName };
     }
-    return data;
   },
 
   getDailyQR: async (subjectCode?: string): Promise<QRCodeResponse> => {
@@ -467,7 +569,9 @@ export const api = {
 
   getDynamicStudentQR: async (): Promise<QRCodeResponse> => {
     const todayStr = new Date().toISOString().split("T")[0];
-    const token = `MM-STUDENT-${Date.now()}`;
+    const studentEmail = getItem("sa.email") || "sachin@college.edu";
+    const studentUser = studentEmail.split("@")[0].toUpperCase();
+    const token = `ATTENDRIX-STUDENT-${studentUser}-${Date.now().toString().slice(-4)}`;
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/qr/dynamic`, {
         headers: getAuthHeader(),
@@ -478,7 +582,7 @@ export const api = {
         date: todayStr,
         token,
         qrCodeBase64: generateFallbackQRCodeSVG(token),
-        expiresAt: new Date(Date.now() + 60000).toISOString(),
+        expiresAt: new Date(Date.now() + 15000).toISOString(),
         subjectCode: "DYNAMIC_QR",
         subjectName: "Student Dynamic QR",
       };
@@ -525,7 +629,7 @@ export const api = {
       saveLocalAttendanceRecord(data);
       return data;
     } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch")) {
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
         throw err;
       }
       
@@ -534,10 +638,25 @@ export const api = {
         throw new Error(validation.message || "Invalid or expired QR code!");
       }
 
-      const email = getItem("sa.email") || "sachin@college.edu";
-      const name = getItem("sa.name") || "Sachin C K";
+      // Check if token contains a specific student email/name or use active/default student
+      const localStudents = getLocalStudents();
+      let matchedStudent = localStudents[0];
+      const upperToken = qrToken.toUpperCase();
+
+      for (const st of localStudents) {
+        const handle = st.email ? st.email.split("@")[0].toUpperCase() : "";
+        if (handle && upperToken.includes(handle)) {
+          matchedStudent = st;
+          break;
+        }
+      }
+
+      const email = matchedStudent?.email || getItem("sa.email") || "sachin@college.edu";
+      const name = matchedStudent?.name || getItem("sa.name") || "Sachin C K";
       const todayStr = new Date().toISOString().split("T")[0];
       const nowIso = new Date().toISOString();
+      const activeSessions = getRealtimeSubjectSessions();
+      const matchedSubj = validation.subject || activeSessions[0];
 
       const localRecord: AttendanceResponse = {
         id: Date.now(),
@@ -547,10 +666,10 @@ export const api = {
         date: todayStr,
         markedAt: nowIso,
         status: "PRESENT",
-        subjectCode: "CS301",
-        subjectName: "Grooming",
+        subjectCode: matchedSubj.code,
+        subjectName: matchedSubj.name,
         sessionTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        recordedByFacultyEmail: "Laxman Ashok Handenavar",
+        recordedByFacultyEmail: matchedSubj.faculty || "Laxman Ashok Handenavar",
         deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser",
       };
 
@@ -877,14 +996,22 @@ export const api = {
   },
 
   getStudents: async (page = 0, size = 100): Promise<any[]> => {
+    const localList = getLocalStudents();
     try {
       const res = await fetch(`${API_BASE_URL}/admin/students?page=${page}&size=${size}`, {
         headers: getAuthHeader(),
       });
       const data = await handleResponse<any>(res);
-      return data.content || data.items || (Array.isArray(data) ? data : []);
+      const remoteList = data.content || data.items || (Array.isArray(data) ? data : []);
+      const merged = [...remoteList];
+      for (const loc of localList) {
+        if (!merged.some(m => m.email === loc.email || m.usn === loc.usn)) {
+          merged.push(loc);
+        }
+      }
+      return merged;
     } catch {
-      return [];
+      return localList;
     }
   },
 

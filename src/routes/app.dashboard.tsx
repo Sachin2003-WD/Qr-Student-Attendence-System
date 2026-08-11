@@ -68,16 +68,22 @@ function Dashboard() {
    ============================================================ */
 function StudentLiveDash() {
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
-  const [manualToken, setManualToken] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState<string>("CS301");
+  const [qrData, setQrData] = useState<QRCodeResponse | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(15);
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [marking, setMarking] = useState(false);
+
+  const activeSessions = getRealtimeSubjectSessions();
 
   const loadStudentData = async () => {
     try {
       setLoading(true);
-      const sum = await api.getMyAttendanceSummary();
-      setSummary(sum);
+      const [sum, qr] = await Promise.all([
+        api.getMyAttendanceSummary().catch(() => null),
+        api.getDynamicStudentQRCode().catch(() => null),
+      ]);
+      if (sum) setSummary(sum);
+      if (qr) setQrData(qr);
     } catch {
       // silent
     } finally {
@@ -87,26 +93,25 @@ function StudentLiveDash() {
 
   useEffect(() => {
     loadStudentData();
+    const interval = setInterval(() => {
+      api.getMyAttendanceSummary().then((s) => setSummary(s)).catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const handleMarkAttendance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualToken.trim()) {
-      toast.error("Please enter a valid QR token.");
+  // 15-second dynamic QR auto-refresh timer
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      api.getDynamicStudentQRCode().then((qr) => {
+        setQrData(qr);
+        setSecondsLeft(15);
+      }).catch(() => {});
       return;
     }
-    try {
-      setMarking(true);
-      const res = await api.markAttendance(manualToken.trim(), selectedSubject);
-      toast.success(`Attendance marked: ${res.status} for ${selectedSubject}!`);
-      setManualToken("");
-      loadStudentData();
-    } catch (err: any) {
-      toast.error(err.message || "Invalid or expired QR token!");
-    } finally {
-      setMarking(false);
-    }
-  };
+    const timer = setInterval(() => setSecondsLeft((prev) => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [secondsLeft]);
 
   return (
     <div className="space-y-6">
@@ -119,30 +124,37 @@ function StudentLiveDash() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Today's Subject Sessions */}
-        <Card className="border-border/60">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" /> Today's Subject Sessions
-            </CardTitle>
+        {/* Today's Subject Sessions (Realtime from Active Batches) */}
+        <Card className="border-border/60 shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/40">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" /> Today's Subject Sessions (Realtime)
+              </CardTitle>
+              <Badge variant="outline" className="text-[10px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                Live Realtime
+              </Badge>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {TODAY_SUBJECT_SESSIONS.map((s) => (
+          <CardContent className="pt-4 space-y-2.5">
+            {activeSessions.map((s, idx) => (
               <div
-                key={s.code}
+                key={s.code || idx}
                 onClick={() => setSelectedSubject(s.code)}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
                   selectedSubject === s.code
-                    ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20"
+                    ? "bg-primary/10 border-primary/40 ring-1 ring-primary/30"
                     : "border-border/60 hover:bg-muted/40"
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold">{s.name}</span>
-                  <Badge variant="outline" className="font-mono text-[10px]">{s.code}</Badge>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-bold text-foreground">{s.name}</span>
+                  <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                    {s.code}
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {s.time}</span>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1 font-mono font-medium"><Clock className="h-3.5 w-3.5 text-primary" /> {s.time}</span>
                   <span>• {s.faculty}</span>
                   <span>• {s.room}</span>
                 </div>
@@ -151,28 +163,40 @@ function StudentLiveDash() {
           </CardContent>
         </Card>
 
-        {/* Manual Token Entry */}
-        <Card className="border-border/60">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <QrCode className="h-5 w-5 text-primary" /> Manual Token Entry
+        {/* Personal Student Dynamic QR Code Showcase Card */}
+        <Card className="border-primary/30 bg-primary/5 shadow-xs">
+          <CardHeader className="pb-2 text-center border-b border-primary/10">
+            <CardTitle className="text-base font-bold flex items-center justify-center gap-2 text-primary">
+              <QrCode className="h-5 w-5" /> Your Personal Student Dynamic QR Code
             </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Displays your live dynamic token for camera scanning by Admin / Faculty.
+            </p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-xs text-muted-foreground">
-              Selected Subject: <span className="font-bold text-foreground font-mono">{selectedSubject}</span>
-            </div>
-            <form onSubmit={handleMarkAttendance} className="space-y-3">
-              <Input
-                placeholder="Paste classroom QR token here..."
-                value={manualToken}
-                onChange={(e) => setManualToken(e.target.value)}
-                className="h-10 text-xs font-mono"
-              />
-              <Button type="submit" className="w-full text-xs font-semibold" disabled={marking}>
-                {marking ? "Validating..." : `Mark Attendance for ${selectedSubject}`}
+          <CardContent className="pt-4 flex flex-col items-center text-center space-y-3">
+            {qrData?.qrCodeBase64 ? (
+              <div className="rounded-2xl border bg-white p-3 shadow-md border-primary/20">
+                <img src={qrData.qrCodeBase64} alt="Student Dynamic QR" className="h-44 w-44 object-contain" />
+              </div>
+            ) : (
+              <div className="grid h-44 w-44 place-items-center rounded-2xl border bg-card text-xs">Loading Live QR...</div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold bg-background px-3 py-1 rounded-md border border-border text-foreground shadow-xs">
+                {qrData?.token || "Generating..."}
+              </span>
+              <Button size="icon" variant="outline" className="h-8 w-8" onClick={loadStudentData}>
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               </Button>
-            </form>
+            </div>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
+              <Clock className="h-3 w-3 text-primary animate-spin" /> Dynamic token auto-refreshes in <strong>{secondsLeft}s</strong>
+            </p>
+            <Link to="/app/attendance" className="w-full pt-1">
+              <Button size="sm" className="w-full text-xs font-bold gap-2">
+                <QrCode className="h-4 w-4" /> Open Fullscreen QR Scanner
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

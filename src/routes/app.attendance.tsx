@@ -51,17 +51,17 @@ function AttendancePage() {
 function StudentAttendanceView() {
   const [qrData, setQrData] = useState<QRCodeResponse | null>(null);
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
-  const [manualToken, setManualToken] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState<string>("CS301");
   const [loading, setLoading] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [secondsLeft, setSecondsLeft] = useState(15);
+
+  const activeSessions = getRealtimeSubjectSessions();
 
   const fetchDynamicQR = async () => {
     try {
       setLoading(true);
       const res = await api.getDynamicStudentQRCode();
       setQrData(res);
-      setSecondsLeft(60);
+      setSecondsLeft(15);
     } catch (err: any) {
       toast.error(err.message || "Failed to generate dynamic QR code");
     } finally {
@@ -96,6 +96,7 @@ function StudentAttendanceView() {
     };
   }, [fetchSummary]);
 
+  // 15-second dynamic QR auto-rotation timer
   useEffect(() => {
     if (secondsLeft <= 0) {
       fetchDynamicQR();
@@ -105,98 +106,72 @@ function StudentAttendanceView() {
     return () => clearInterval(timer);
   }, [secondsLeft]);
 
-  const handleScanSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualToken.trim()) return;
-    try {
-      setLoading(true);
-      const res = await api.markAttendance(manualToken.trim(), selectedSubject);
-      toast.success(`Attendance marked ${res.status} for ${res.subjectName || selectedSubject}!`);
-      setManualToken("");
-      fetchSummary();
-    } catch (err: any) {
-      toast.error(err.message || "Invalid or expired QR token! Attendance rejected.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Student Personal Unique Dynamic QR Card */}
+      {/* Student Personal Unique Dynamic QR & Active Sessions Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader className="pb-2 text-center">
-            <CardTitle className="text-base flex items-center justify-center gap-2">
-              <QrCode className="h-5 w-5 text-primary" /> Your Personal Student Dynamic QR Code
+        <Card className="border-primary/30 bg-primary/5 shadow-xs">
+          <CardHeader className="pb-2 text-center border-b border-primary/10">
+            <CardTitle className="text-base font-bold flex items-center justify-center gap-2 text-primary">
+              <QrCode className="h-5 w-5" /> Your Personal Student Dynamic QR Code
             </CardTitle>
             <CardDescription className="text-xs">
-              Show this unique QR identity token to the Admin camera scanner to mark attendance.
+              Show this unique QR identity token to the Admin camera scanner or enter token to mark attendance.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center text-center space-y-3">
+          <CardContent className="pt-4 flex flex-col items-center text-center space-y-3">
             {qrData?.qrCodeBase64 ? (
-              <div className="rounded-2xl border bg-white p-4 shadow-md">
+              <div className="rounded-2xl border bg-white p-4 shadow-md border-primary/20">
                 <img src={qrData.qrCodeBase64} alt="Student Dynamic QR" className="h-52 w-52 object-contain" />
               </div>
             ) : (
-              <div className="grid h-52 w-52 place-items-center rounded-2xl border bg-muted text-xs">Loading QR...</div>
+              <div className="grid h-52 w-52 place-items-center rounded-2xl border bg-card text-xs">Loading Live QR...</div>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold bg-background px-3 py-1 rounded-md border text-foreground">
+              <span className="text-xs font-mono font-bold bg-background px-3.5 py-1.5 rounded-md border border-border text-foreground shadow-xs">
                 {qrData?.token || "Generating..."}
               </span>
               <Button size="icon" variant="outline" className="h-8 w-8" onClick={fetchDynamicQR}>
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3 text-primary" /> Dynamic token refreshes automatically in <strong>{secondsLeft}s</strong>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
+              <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes automatically in <strong>{secondsLeft}s</strong>
             </p>
           </CardContent>
         </Card>
 
-        {/* Classroom Token Entry */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Scan className="h-5 w-5 text-primary" /> Scan / Enter Classroom Session QR Token
-            </CardTitle>
-            <CardDescription className="text-xs">
-              If your instructor displays a classroom QR code, select subject and enter the token below.
+        {/* Active Realtime Subject Sessions */}
+        <Card className="border-border/60 shadow-xs">
+          <CardHeader className="pb-3 border-b border-border/40">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" /> Active Subject Sessions (Realtime)
+              </CardTitle>
+              <Badge variant="outline" className="text-[10px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                Auto-Synced
+              </Badge>
+            </div>
+            <CardDescription className="text-xs mt-1">
+              Active sessions configured by Administrator. Present your dynamic QR code to mark presence.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleScanSubmit} className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Select Subject Session</label>
-                <select
-                  value={selectedSubject}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {TODAY_SUBJECT_SESSIONS.map((s) => (
-                    <option key={s.code} value={s.code}>
-                      {s.code} — {s.name} ({s.time})
-                    </option>
-                  ))}
-                </select>
+          <CardContent className="pt-4 space-y-3">
+            {activeSessions.map((s, idx) => (
+              <div key={s.code || idx} className="p-3.5 rounded-xl border border-border/60 bg-muted/20 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-foreground">{s.name}</span>
+                  <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                    {s.code}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-mono">
+                  <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3.5 w-3.5 text-primary" /> {s.time}</span>
+                  <span>• {s.faculty}</span>
+                  <span>• {s.room}</span>
+                </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Session Token Code</label>
-                <Input
-                  placeholder="Enter classroom token (e.g. DAILY_CLASSROOM_TOKEN_CS301)..."
-                  value={manualToken}
-                  onChange={(e) => setManualToken(e.target.value)}
-                  className="text-xs font-mono"
-                />
-              </div>
-
-              <Button type="submit" className="w-full text-xs font-semibold gap-2 h-9" disabled={loading || !manualToken.trim()}>
-                <CheckCircle2 className="h-4 w-4" /> Mark Attendance
-              </Button>
-            </form>
+            ))}
           </CardContent>
         </Card>
       </div>
