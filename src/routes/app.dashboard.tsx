@@ -69,7 +69,7 @@ function Dashboard() {
 function StudentLiveDash() {
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
   const [qrData, setQrData] = useState<QRCodeResponse | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(15);
+  const [secondsLeft, setSecondsLeft] = useState(120);
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
@@ -100,18 +100,21 @@ function StudentLiveDash() {
     return () => clearInterval(interval);
   }, []);
 
-  // 15-second dynamic QR auto-refresh timer
+  // 120-second (2 minutes) dynamic QR auto-rotation timer
   useEffect(() => {
     if (secondsLeft <= 0) {
       api.getDynamicStudentQRCode().then((qr) => {
         setQrData(qr);
-        setSecondsLeft(15);
+        setSecondsLeft(120);
       }).catch(() => {});
       return;
     }
     const timer = setInterval(() => setSecondsLeft((prev) => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [secondsLeft]);
+
+  const minutesDisplay = Math.floor(secondsLeft / 60);
+  const secondsDisplay = String(secondsLeft % 60).padStart(2, "0");
 
   return (
     <div className="space-y-6">
@@ -175,22 +178,17 @@ function StudentLiveDash() {
           </CardHeader>
           <CardContent className="pt-4 flex flex-col items-center text-center space-y-3">
             {qrData?.qrCodeBase64 ? (
-              <div className="rounded-2xl border bg-white p-3 shadow-md border-primary/20">
-                <img src={qrData.qrCodeBase64} alt="Student Dynamic QR" className="h-44 w-44 object-contain" />
+              <div className="rounded-2xl border bg-white p-4 shadow-md border-primary/20">
+                <img src={qrData.qrCodeBase64} alt="Student Dynamic QR" className="h-52 w-52 object-contain" />
               </div>
             ) : (
-              <div className="grid h-44 w-44 place-items-center rounded-2xl border bg-card text-xs">Loading Live QR...</div>
+              <div className="grid h-52 w-52 place-items-center rounded-2xl border bg-card text-xs">Loading Live QR...</div>
             )}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold bg-background px-3 py-1 rounded-md border border-border text-foreground shadow-xs">
-                {qrData?.token || "Generating..."}
-              </span>
-              <Button size="icon" variant="outline" className="h-8 w-8" onClick={loadStudentData}>
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              </Button>
-            </div>
+            <span className="text-xs font-mono font-bold bg-background px-3.5 py-1.5 rounded-md border border-border text-foreground shadow-xs">
+              {qrData?.token || "Generating..."}
+            </span>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-              <Clock className="h-3 w-3 text-primary animate-spin" /> Dynamic token auto-refreshes in <strong>{secondsLeft}s</strong>
+              <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes automatically in <strong>{minutesDisplay}m {secondsDisplay}s</strong>
             </p>
             <Link to="/app/attendance" className="w-full pt-1">
               <Button size="sm" className="w-full text-xs font-bold gap-2">
@@ -214,7 +212,7 @@ function StudentLiveDash() {
             <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">Loading...</div>
           ) : summary?.records && summary.records.length > 0 ? (
             <div className="w-full overflow-x-auto">
-              <Table>
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Date</TableHead>
@@ -390,7 +388,7 @@ function AdminLiveDash() {
         <CardContent>
           {records.length > 0 ? (
             <div className="w-full overflow-x-auto">
-              <Table>
+              <Table className="min-w-[550px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Student</TableHead>

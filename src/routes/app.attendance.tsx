@@ -131,14 +131,9 @@ function StudentAttendanceView() {
             ) : (
               <div className="grid h-52 w-52 place-items-center rounded-2xl border bg-card text-xs">Loading Live QR...</div>
             )}
-            <div className="flex items-center gap-2">
               <span className="text-xs font-mono font-bold bg-background px-3.5 py-1.5 rounded-md border border-border text-foreground shadow-xs">
                 {qrData?.token || "Generating..."}
               </span>
-              <Button size="icon" variant="outline" className="h-8 w-8" onClick={fetchDynamicQR}>
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              </Button>
-            </div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
               <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes automatically in <strong>{minutesDisplay}m {secondsDisplay}s</strong>
             </p>
@@ -198,7 +193,7 @@ function StudentAttendanceView() {
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-x-auto">
-            <Table>
+            <Table className="min-w-[500px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Date</TableHead>
@@ -307,7 +302,7 @@ function AdminAttendanceView() {
         if (report.length > 0) {
           const latest = report[0];
           setScanResult((prev) => {
-            if (!prev || prev.studentName !== (latest.userName || latest.userEmail)) {
+            if (!prev) {
               return {
                 success: true,
                 studentName: latest.userName || latest.userEmail,
@@ -391,6 +386,22 @@ function AdminAttendanceView() {
       };
 
       setScanResult(newResult);
+      
+      // Play success beep sound
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.5);
+      } catch { /* ignore audio errors */ }
+
       setPresentCount((prev) => prev + 1);
       setScannedList((prev) => [response, ...prev.filter((r) => r.id !== response.id)]);
       toast.success(`✓ Attendance Marked: ${response.userName || "Student"} [PRESENT]`);
@@ -403,6 +414,22 @@ function AdminAttendanceView() {
         success: false,
         message: errMsg,
       });
+
+      // Play error beep sound
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(300, audioCtx.currentTime); // Low error tone
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.4);
+      } catch { /* ignore audio errors */ }
+
       setQrInputToken("");
     } finally {
       setLoading(false);

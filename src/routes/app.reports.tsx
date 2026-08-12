@@ -24,6 +24,16 @@ function Reports() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkViewport = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkViewport();
+    window.addEventListener("resize", checkViewport);
+    return () => window.removeEventListener("resize", checkViewport);
+  }, []);
 
   const fetchAnalytics = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -145,8 +155,8 @@ function Reports() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={yearlyData}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                  <XAxis dataKey="year" fontSize={11} stroke="currentColor" opacity={0.7} />
-                  <YAxis fontSize={11} stroke="currentColor" opacity={0.7} />
+                  <XAxis dataKey="year" fontSize={isMobile ? 9 : 11} stroke="currentColor" opacity={0.7} />
+                  <YAxis fontSize={isMobile ? 9 : 11} stroke="currentColor" opacity={0.7} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#0f172a",
@@ -159,7 +169,7 @@ function Reports() {
                     }}
                     itemStyle={{ color: "#f8fafc" }}
                   />
-                  <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
                   <Bar dataKey="sessions" name="Sessions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="completed" name="Completed" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -191,10 +201,10 @@ function Reports() {
                     data={deptData}
                     dataKey="value"
                     nameKey="name"
-                    innerRadius={55}
-                    outerRadius={95}
+                    innerRadius={isMobile ? 35 : 55}
+                    outerRadius={isMobile ? 65 : 95}
                     paddingAngle={4}
-                    label={({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={isMobile ? undefined : ({ name, percent }: any) => `${name} (${(percent * 100).toFixed(0)}%)`}
                   >
                     {deptData.map((_: any, i: number) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -214,6 +224,7 @@ function Reports() {
                     itemStyle={{ color: "#ffffff", fontWeight: 600 }}
                     labelStyle={{ color: "#ffffff", fontWeight: 700 }}
                   />
+                  {isMobile && <Legend wrapperStyle={{ fontSize: "10px", paddingTop: "4px" }} />}
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -240,8 +251,8 @@ function Reports() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={ratingData}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                  <XAxis dataKey="week" fontSize={11} stroke="currentColor" opacity={0.7} />
-                  <YAxis domain={[3.5, 5]} fontSize={11} stroke="currentColor" opacity={0.7} />
+                  <XAxis dataKey="week" fontSize={isMobile ? 9 : 11} stroke="currentColor" opacity={0.7} />
+                  <YAxis domain={[3.5, 5]} fontSize={isMobile ? 9 : 11} stroke="currentColor" opacity={0.7} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#0f172a",
@@ -294,8 +305,8 @@ function Reports() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                  <XAxis dataKey="year" fontSize={11} stroke="currentColor" opacity={0.7} />
-                  <YAxis fontSize={11} stroke="currentColor" opacity={0.7} />
+                  <XAxis dataKey="year" fontSize={isMobile ? 9 : 11} stroke="currentColor" opacity={0.7} />
+                  <YAxis fontSize={isMobile ? 9 : 11} stroke="currentColor" opacity={0.7} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#0f172a",
