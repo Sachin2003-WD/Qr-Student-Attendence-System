@@ -217,70 +217,74 @@ function CalendarPage() {
 
       <Card className="border-border/60">
         <CardContent className="p-3 sm:p-6">
-          <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-              <div key={d} className="py-2">
-                {d}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1.5">
-            {grid.map((d, i) => {
-              if (!d) return <div key={i} className="min-h-[110px] rounded-lg bg-muted/10" />;
-              const dateStr = formatDateStr(d);
-              const recList = attendanceByDate.get(dateStr) || [];
-              const isToday = dateStr === todayStr;
-              const isFuture = dateStr > todayStr;
-
-              const dayTotalStudents = portalTotalStudents;
-              const dayPresentStudents = isFuture ? 0 : recList.filter(r => r.status === "PRESENT").length;
-
-              return (
-                <div
-                  key={i}
-                  onClick={() => handleCellClick(d)}
-                  className={cn(
-                    "min-h-[110px] rounded-xl border p-2 text-left transition-all cursor-pointer hover:border-primary hover:shadow-md flex flex-col justify-between group",
-                    isToday && "border-primary bg-primary/5 font-semibold ring-2 ring-primary/20",
-                    isFuture && "bg-muted/20 border-border/40 opacity-75 hover:opacity-100",
-                    !isFuture && "bg-card hover:bg-muted/30"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={cn("text-xs font-bold font-mono", isToday && "text-primary", isFuture && "text-muted-foreground")}>
-                      {d.getDate()}
-                    </span>
-                    {isFuture ? (
-                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-500/30 bg-amber-500/10 text-amber-600 font-mono">
-                        Future
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 bg-primary/10 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                        View
-                      </Badge>
-                    )}
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[640px] sm:min-w-0">
+              <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                  <div key={d} className="py-2">
+                    {d}
                   </div>
+                ))}
+              </div>
 
-                  {!isFuture ? (
-                    <div className="space-y-1.5 mt-2">
-                      <div className="text-[10px] text-muted-foreground font-medium flex items-center justify-between">
-                        <span>Total Students:</span>
-                        <span className="font-bold text-foreground font-mono">{dayTotalStudents}</span>
+              <div className="grid grid-cols-7 gap-1.5">
+                {grid.map((d, i) => {
+                  if (!d) return <div key={i} className="min-h-[110px] rounded-lg bg-muted/10" />;
+                  const dateStr = formatDateStr(d);
+                  const recList = attendanceByDate.get(dateStr) || [];
+                  const isToday = dateStr === todayStr;
+                  const isFuture = dateStr > todayStr;
+
+                  const dayTotalStudents = portalTotalStudents;
+                  const dayPresentStudents = isFuture ? 0 : recList.filter(r => r.status === "PRESENT").length;
+
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => handleCellClick(d)}
+                      className={cn(
+                        "min-h-[110px] rounded-xl border p-2 text-left transition-all cursor-pointer hover:border-primary hover:shadow-md flex flex-col justify-between group",
+                        isToday && "border-primary bg-primary/5 font-semibold ring-2 ring-primary/20",
+                        isFuture && "bg-muted/20 border-border/40 opacity-75 hover:opacity-100",
+                        !isFuture && "bg-card hover:bg-muted/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={cn("text-xs font-bold font-mono", isToday && "text-primary", isFuture && "text-muted-foreground")}>
+                          {d.getDate()}
+                        </span>
+                        {isFuture ? (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-500/30 bg-amber-500/10 text-amber-600 font-mono">
+                            Future
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-primary/20 bg-primary/10 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            View
+                          </Badge>
+                        )}
                       </div>
-                      <div className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-[10px] font-mono font-bold flex items-center justify-between shadow-xs">
-                        <span>Present:</span>
-                        <span>{dayPresentStudents}</span>
-                      </div>
+
+                      {!isFuture ? (
+                        <div className="space-y-1.5 mt-2">
+                          <div className="text-[10px] text-muted-foreground font-medium flex items-center justify-between">
+                            <span>Students:</span>
+                            <span className="font-bold text-foreground font-mono">{dayTotalStudents}</span>
+                          </div>
+                          <div className="rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-1.5 py-1 text-[10px] font-mono font-bold flex items-center justify-between shadow-xs">
+                            <span>Present:</span>
+                            <span>{dayPresentStudents}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] text-muted-foreground/60 italic font-mono mt-4">
+                          Upcoming
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-[10px] text-muted-foreground/60 italic font-mono mt-4">
-                      Upcoming
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

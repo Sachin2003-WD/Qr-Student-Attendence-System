@@ -787,7 +787,7 @@ function AdminAttendanceView() {
 
       {/* REQUIREMENT 2: RECENT SESSION ATTENDANCE LOGS TABLE WITH REALTIME UPDATES */}
       <Card className="border border-border/60">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" /> Recent Session Attendance Logs
@@ -796,7 +796,7 @@ function AdminAttendanceView() {
               Live real-time feed of scanned and marked student attendance logs.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
               Live Realtime (3s)
             </Badge>
@@ -814,27 +814,27 @@ function AdminAttendanceView() {
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-x-auto">
-            <Table>
+            <Table className="min-w-[650px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs">Student Name</TableHead>
-                  <TableHead className="text-xs">Batch Code</TableHead>
-                  <TableHead className="text-xs">Subject</TableHead>
-                  <TableHead className="text-xs">Time</TableHead>
-                  <TableHead className="text-right text-xs">Status</TableHead>
+                  <TableHead className="text-xs whitespace-nowrap">Student Name</TableHead>
+                  <TableHead className="text-xs whitespace-nowrap">Batch Code</TableHead>
+                  <TableHead className="text-xs whitespace-nowrap">Subject</TableHead>
+                  <TableHead className="text-xs whitespace-nowrap">Time</TableHead>
+                  <TableHead className="text-right text-xs whitespace-nowrap">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {scannedList.length > 0 ? (
                   scannedList.map((r, i) => (
                     <TableRow key={i}>
-                      <TableCell className="font-medium text-xs font-semibold">{r.userName || r.userEmail}</TableCell>
-                      <TableCell className="font-mono text-xs text-primary font-semibold">{selectedBatchCode || "BATCH-01"}</TableCell>
-                      <TableCell className="text-xs">{r.subjectName || selectedSubject}</TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">
+                      <TableCell className="font-medium text-xs font-semibold whitespace-nowrap">{r.userName || r.userEmail}</TableCell>
+                      <TableCell className="font-mono text-xs text-primary font-semibold whitespace-nowrap">{selectedBatchCode || "BATCH-01"}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{r.subjectName || selectedSubject}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
                         {new Date(r.markedAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right whitespace-nowrap">
                         <Badge className="bg-emerald-600 text-white font-bold text-[10px]">
                           {r.status}
                         </Badge>

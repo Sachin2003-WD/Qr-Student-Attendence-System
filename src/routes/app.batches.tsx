@@ -559,7 +559,7 @@ function AdminBatchesView() {
       </Dialog>
 
       {/* SEARCH BAR */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -576,7 +576,7 @@ function AdminBatchesView() {
 
       {/* BATCHES TABLE WITH REAL-TIME PRESENT/TOTAL STUDENTS COUNT */}
       <Card className="p-4 border border-border/60">
-        <CardHeader className="px-0 pt-0 pb-3 flex flex-row items-center justify-between">
+        <CardHeader className="px-0 pt-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" /> Active Batches & Student Presence
@@ -590,17 +590,17 @@ function AdminBatchesView() {
         {loading ? (
           <div className="py-8 text-center text-xs text-muted-foreground">Loading batches from database...</div>
         ) : filteredBatches.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[650px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Batch Code</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Branch</TableHead>
-                  <TableHead>Start Time</TableHead>
-                  <TableHead>Trainer / Faculty</TableHead>
-                  <TableHead>Present / Total Students</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="whitespace-nowrap">Batch Code</TableHead>
+                  <TableHead className="whitespace-nowrap">Subject</TableHead>
+                  <TableHead className="whitespace-nowrap">Branch</TableHead>
+                  <TableHead className="whitespace-nowrap">Start Time</TableHead>
+                  <TableHead className="whitespace-nowrap">Trainer / Faculty</TableHead>
+                  <TableHead className="whitespace-nowrap">Present / Total Students</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -611,7 +611,7 @@ function AdminBatchesView() {
 
                   return (
                     <TableRow key={b.id || b.batchCode}>
-                      <TableCell className="font-mono text-xs font-bold text-primary flex items-center gap-1.5">
+                      <TableCell className="font-mono text-xs font-bold text-primary flex items-center gap-1.5 whitespace-nowrap">
                         <span>{code}</span>
                         <Button
                           size="icon"
@@ -622,14 +622,14 @@ function AdminBatchesView() {
                           {copiedCode === code ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
                         </Button>
                       </TableCell>
-                      <TableCell className="text-xs font-semibold text-foreground">{b.subjectName || "Grooming"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{b.branch || "Rajajinagar Jspiders"}</TableCell>
-                      <TableCell className="text-xs font-mono">{b.classTiming || "04:45 PM"}</TableCell>
-                      <TableCell className="text-xs font-medium">{b.trainerName || "Laxman Ashok Handenavar"}</TableCell>
-                      <TableCell className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <TableCell className="text-xs font-semibold text-foreground whitespace-nowrap">{b.subjectName || "Grooming"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{b.branch || "Rajajinagar Jspiders"}</TableCell>
+                      <TableCell className="text-xs font-mono whitespace-nowrap">{b.classTiming || "04:45 PM"}</TableCell>
+                      <TableCell className="text-xs font-medium whitespace-nowrap">{b.trainerName || "Laxman Ashok Handenavar"}</TableCell>
+                      <TableCell className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                         {presentCountInBatch} / {totalRegisteredStudents} Present
                       </TableCell>
-                      <TableCell className="text-right flex items-center justify-end gap-2">
+                      <TableCell className="text-right flex items-center justify-end gap-2 whitespace-nowrap">
                         <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                           ACTIVE
                         </Badge>
@@ -664,7 +664,7 @@ function AdminBatchesView() {
 
       {/* ADMIN STUDENT ATTENDANCE ROSTER FOR PARTICULAR BATCH */}
       <Card className="border border-border/60">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <CardTitle className="text-base font-bold flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" /> Registered Students Attendance Roster ({totalRegisteredStudents} Students)
@@ -673,56 +673,58 @@ function AdminBatchesView() {
               Detailed list of student names, emails, USNs, and live attendance status for active batches.
             </CardDescription>
           </div>
-          <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+          <Badge variant="outline" className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20 w-fit">
             Live Sync (3s)
           </Badge>
         </CardHeader>
         <CardContent>
           {students.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Student Name</TableHead>
-                  <TableHead className="text-xs">Email Address</TableHead>
-                  <TableHead className="text-xs">USN / ID</TableHead>
-                  <TableHead className="text-xs">Time Marked</TableHead>
-                  <TableHead className="text-right text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((s: any, i: number) => {
-                  const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
-                  const email = s.email || "student@mentormatrix.com";
-                  const usn = s.usn || `STU100${s.id || i + 1}`;
-                  const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
-                  const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
-                  const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
+            <div className="w-full overflow-x-auto">
+              <Table className="min-w-[650px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs whitespace-nowrap">Student Name</TableHead>
+                    <TableHead className="text-xs whitespace-nowrap">Email Address</TableHead>
+                    <TableHead className="text-xs whitespace-nowrap">USN / ID</TableHead>
+                    <TableHead className="text-xs whitespace-nowrap">Time Marked</TableHead>
+                    <TableHead className="text-right text-xs whitespace-nowrap">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {students.map((s: any, i: number) => {
+                    const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
+                    const email = s.email || "student@mentormatrix.com";
+                    const usn = s.usn || `STU100${s.id || i + 1}`;
+                    const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
+                    const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
+                    const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
 
-                  return (
-                    <TableRow key={s.id || i}>
-                      <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
-                        <User className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span>{studentName}</span>
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
-                      <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          className={`text-[10px] font-bold ${
-                            isPresent
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                              : "bg-rose-600 hover:bg-rose-700 text-white"
-                          }`}
-                        >
-                          {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                    return (
+                      <TableRow key={s.id || i}>
+                        <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2 whitespace-nowrap">
+                          <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>{studentName}</span>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">{email}</TableCell>
+                        <TableCell className="text-xs font-mono font-bold text-primary whitespace-nowrap">{usn}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">{timeMarked}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Badge
+                            className={`text-[10px] font-bold ${
+                              isPresent
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                : "bg-rose-600 hover:bg-rose-700 text-white"
+                            }`}
+                          >
+                            {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl">
               No registered students found in portal.
