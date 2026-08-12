@@ -213,34 +213,36 @@ function StudentLiveDash() {
           {loading ? (
             <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">Loading...</div>
           ) : summary?.records && summary.records.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs">Subject</TableHead>
-                  <TableHead className="text-xs">Time</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {summary.records.slice(0, 8).map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-xs font-mono">{r.date}</TableCell>
-                    <TableCell className="text-xs font-medium">{r.subjectCode || "—"} - {r.subjectName || "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">
-                      {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] font-bold ${
-                        r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-                      }`}>
-                        {r.status}
-                      </Badge>
-                    </TableCell>
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Subject</TableHead>
+                    <TableHead className="text-xs">Time</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {summary.records.slice(0, 8).map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-xs font-mono">{r.date}</TableCell>
+                      <TableCell className="text-xs font-medium">{r.subjectCode || "—"} - {r.subjectName || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] font-bold ${
+                          r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                        }`}>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="rounded-xl border border-dashed p-8 text-center">
               <QrCode className="mx-auto h-8 w-8 text-muted-foreground/50" />
@@ -296,16 +298,16 @@ function AdminLiveDash() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
         <Link to="/app/batches">
           <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <Layers className="h-5 w-5" />
               </div>
-              <div>
-                <div className="text-sm font-bold">Manage Batches</div>
-                <div className="text-xs text-muted-foreground">Create & configure batch codes</div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate">Manage Batches</div>
+                <div className="text-xs text-muted-foreground truncate">Create & configure batch codes</div>
               </div>
             </div>
           </Card>
@@ -313,12 +315,12 @@ function AdminLiveDash() {
         <Link to="/app/attendance">
           <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                 <QrCode className="h-5 w-5" />
               </div>
-              <div>
-                <div className="text-sm font-bold">Attendance Scanner</div>
-                <div className="text-xs text-muted-foreground">QR scanner & session control</div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate">Attendance Scanner</div>
+                <div className="text-xs text-muted-foreground truncate">QR scanner & session control</div>
               </div>
             </div>
           </Card>
@@ -326,12 +328,12 @@ function AdminLiveDash() {
         <Link to="/app/calendar">
           <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
                 <CalendarCheck className="h-5 w-5" />
               </div>
-              <div>
-                <div className="text-sm font-bold">Calendar View</div>
-                <div className="text-xs text-muted-foreground">Date-wise attendance report</div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate">Calendar View</div>
+                <div className="text-xs text-muted-foreground truncate">Date-wise attendance report</div>
               </div>
             </div>
           </Card>
@@ -352,17 +354,17 @@ function AdminLiveDash() {
           {loadingBatches ? (
             <div className="py-6 text-center text-xs text-muted-foreground animate-pulse">Loading batches...</div>
           ) : batches.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {batches.slice(0, 6).map((b: any, idx: number) => (
-                <div key={b.id || idx} className="rounded-xl border border-border/60 p-3 space-y-2 hover:border-primary/40 transition-all">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                <div key={b.id || idx} className="rounded-xl border border-border/60 p-3.5 space-y-2 hover:border-primary/40 transition-all">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20 break-all">
                       {b.batchCode || b.name}
                     </Badge>
-                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-none">ACTIVE</Badge>
+                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-none shrink-0">ACTIVE</Badge>
                   </div>
-                  <div className="text-xs font-semibold">{b.subjectName || "Subject"}</div>
-                  <div className="text-[11px] text-muted-foreground">{b.branch || "Branch"} • {b.trainerName || "Trainer"}</div>
+                  <div className="text-xs font-semibold break-words">{b.subjectName || "Subject"}</div>
+                  <div className="text-[11px] text-muted-foreground break-words">{b.branch || "Branch"} • {b.trainerName || "Trainer"}</div>
                   <div className="text-[11px] text-muted-foreground font-mono">{b.classTiming || "—"} • {b.startDate || "—"}</div>
                 </div>
               ))}
@@ -387,39 +389,37 @@ function AdminLiveDash() {
         </CardHeader>
         <CardContent>
           {records.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Student</TableHead>
-                  <TableHead className="text-xs">Subject</TableHead>
-                  <TableHead className="text-xs">Date & Time</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.slice(0, 10).map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="text-xs font-medium">{r.userName || r.userEmail}</TableCell>
-                    <TableCell className="text-xs">{r.subjectCode || "—"} - {r.subjectName || "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">
-                      {r.date} {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : ""}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] font-bold ${
-                        r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-                      }`}>
-                        {r.status}
-                      </Badge>
-                    </TableCell>
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Student</TableHead>
+                    <TableHead className="text-xs">Subject</TableHead>
+                    <TableHead className="text-xs">Date & Time</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {records.slice(0, 10).map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-xs font-medium">{r.userName || r.userEmail}</TableCell>
+                      <TableCell className="text-xs font-mono">{r.subjectCode || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {r.date} {r.markedAt ? new Date(r.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] font-bold ${r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
-            <div className="rounded-xl border border-dashed p-8 text-center">
-              <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <div className="mt-2 text-sm font-medium">No Attendance Activity Yet</div>
-              <p className="mt-1 text-xs text-muted-foreground">Attendance logs will appear here when sessions are conducted.</p>
+            <div className="rounded-xl border border-dashed p-8 text-center text-xs text-muted-foreground">
+              No system-wide attendance activity recorded yet.
             </div>
           )}
         </CardContent>

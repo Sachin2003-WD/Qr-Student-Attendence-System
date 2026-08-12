@@ -287,10 +287,10 @@ function CalendarPage() {
 
       {/* POPUP MODAL FOR SELECTED DATE BATCHES ATTENDANCE BREAKDOWN */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <CalendarIcon className="h-5 w-5 text-primary" />
+              <CalendarIcon className="h-5 w-5 text-primary shrink-0" />
               Batch Attendance Report — {selectedDateObj?.toLocaleDateString("en-GB", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
             </DialogTitle>
             <DialogDescription className="text-xs">
@@ -352,7 +352,7 @@ function CalendarPage() {
                             </Badge>
                             <span className="text-sm font-bold text-foreground">{b.subjectName}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
+                          <p className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-3">
                             <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {b.branch}</span>
                             <span className="flex items-center gap-1"><User className="h-3 w-3" /> {b.trainerName}</span>
                             <span className="flex items-center gap-1"><Clock className="h-3 w-3 font-mono" /> {b.classTiming}</span>
@@ -368,7 +368,6 @@ function CalendarPage() {
                           </div>
                         </div>
                       </div>
-
                       <Progress value={b.percentage} className="h-2 mt-3 bg-muted" />
                     </CardHeader>
 
@@ -384,36 +383,38 @@ function CalendarPage() {
                             </div>
 
                             {b.scannedStudents.length > 0 ? (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="text-xs">Student Name</TableHead>
-                                    <TableHead className="text-xs">USN / ID</TableHead>
-                                    <TableHead className="text-xs">Time Marked</TableHead>
-                                    <TableHead className="text-right text-xs">Status</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {b.scannedStudents.map((s, idx) => (
-                                    <TableRow key={idx}>
-                                      <TableCell className="text-xs font-medium">{s.name}</TableCell>
-                                      <TableCell className="text-xs font-mono text-muted-foreground">{s.usn}</TableCell>
-                                      <TableCell className="text-xs font-mono text-muted-foreground">{s.time}</TableCell>
-                                      <TableCell className="text-right">
-                                        <Badge
-                                          className={`text-[10px] font-bold ${
-                                            s.status === "PRESENT"
-                                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                              : "bg-rose-600 hover:bg-rose-700 text-white"
-                                          }`}
-                                        >
-                                          {s.status}
-                                        </Badge>
-                                      </TableCell>
+                              <div className="w-full overflow-x-auto">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="text-xs">Student Name</TableHead>
+                                      <TableHead className="text-xs">USN / ID</TableHead>
+                                      <TableHead className="text-xs">Time Marked</TableHead>
+                                      <TableHead className="text-right text-xs">Status</TableHead>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {b.scannedStudents.map((s, idx) => (
+                                      <TableRow key={idx}>
+                                        <TableCell className="text-xs font-medium">{s.name}</TableCell>
+                                        <TableCell className="text-xs font-mono text-muted-foreground">{s.usn}</TableCell>
+                                        <TableCell className="text-xs font-mono text-muted-foreground">{s.time}</TableCell>
+                                        <TableCell className="text-right">
+                                          <Badge
+                                            className={`text-[10px] font-bold ${
+                                              s.status === "PRESENT"
+                                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                : "bg-rose-600 hover:bg-rose-700 text-white"
+                                            }`}
+                                          >
+                                            {s.status}
+                                          </Badge>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
                             ) : (
                               <div className="py-6 text-center text-xs text-muted-foreground italic">
                                 No registered students found in portal for this batch.

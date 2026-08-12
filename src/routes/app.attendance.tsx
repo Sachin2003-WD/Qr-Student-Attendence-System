@@ -185,40 +185,42 @@ function StudentAttendanceView() {
           </Badge>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Time Marked</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {summary?.records && summary.records.length > 0 ? (
-                summary.records.slice(0, 10).map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium text-xs">{r.date}</TableCell>
-                    <TableCell className="text-xs">{r.subjectName || "Grooming & Skills"}</TableCell>
-                    <TableCell className="text-xs font-mono text-muted-foreground">
-                      {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={r.status === "PRESENT" ? "default" : "destructive"} className="text-[10px]">
-                        {r.status}
-                      </Badge>
+          <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Subject</TableHead>
+                  <TableHead className="text-xs">Time Marked</TableHead>
+                  <TableHead className="text-right text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {summary?.records && summary.records.length > 0 ? (
+                  summary.records.slice(0, 10).map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium text-xs font-mono">{r.date}</TableCell>
+                      <TableCell className="text-xs font-semibold">{r.subjectName || "Grooming & Skills"}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {r.markedAt ? new Date(r.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge className={`text-[10px] font-bold ${r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-6 text-center text-xs text-muted-foreground">
+                      No attendance records logged yet.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-6 text-center text-xs text-muted-foreground">
-                    No attendance records logged yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -761,42 +763,44 @@ function AdminAttendanceView() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student Name</TableHead>
-                <TableHead>Batch Code</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {scannedList.length > 0 ? (
-                scannedList.map((r, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium text-xs">{r.userName || r.userEmail}</TableCell>
-                    <TableCell className="font-mono text-xs text-primary font-semibold">{selectedBatchCode || "BATCH-01"}</TableCell>
-                    <TableCell className="text-xs">{r.subjectName || selectedSubject}</TableCell>
-                    <TableCell className="text-xs font-mono text-muted-foreground">
-                      {new Date(r.markedAt || Date.now()).toLocaleTimeString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px]">
-                        {r.status}
-                      </Badge>
+          <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Student Name</TableHead>
+                  <TableHead className="text-xs">Batch Code</TableHead>
+                  <TableHead className="text-xs">Subject</TableHead>
+                  <TableHead className="text-xs">Time</TableHead>
+                  <TableHead className="text-right text-xs">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {scannedList.length > 0 ? (
+                  scannedList.map((r, i) => (
+                    <TableRow key={i}>
+                      <TableCell className="font-medium text-xs font-semibold">{r.userName || r.userEmail}</TableCell>
+                      <TableCell className="font-mono text-xs text-primary font-semibold">{selectedBatchCode || "BATCH-01"}</TableCell>
+                      <TableCell className="text-xs">{r.subjectName || selectedSubject}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">
+                        {new Date(r.markedAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge className="bg-emerald-600 text-white font-bold text-[10px]">
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
+                      No student scans logged for current session yet. Click "Start Session" and point student QR code at camera.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
-                    No student scans logged for current session yet. Click "Start Session" and point student QR code at camera.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

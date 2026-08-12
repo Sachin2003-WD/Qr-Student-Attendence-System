@@ -18,8 +18,8 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-white/10 blur-3xl" />
       </div>
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-10">
-        <div className="mx-auto w-full max-w-sm">
+      <div className="flex flex-col justify-center px-4 py-8 sm:px-10 sm:py-12">
+        <div className="mx-auto w-full max-w-md">
           <Link to="/" className="mb-8 flex items-center gap-2 lg:hidden">
             <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-chart-2 text-primary-foreground"><Sparkles className="h-5 w-5" /></div>
             <span className="font-bold">Smart Attendance System</span>

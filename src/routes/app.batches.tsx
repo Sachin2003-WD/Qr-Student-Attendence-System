@@ -206,91 +206,95 @@ function StudentBatchesView() {
         </CardHeader>
         <CardContent>
           {students.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Student Name</TableHead>
-                  <TableHead className="text-xs">Email Address</TableHead>
-                  <TableHead className="text-xs">USN / ID</TableHead>
-                  <TableHead className="text-xs">Time Marked</TableHead>
-                  <TableHead className="text-right text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.map((s: any, i: number) => {
-                  const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
-                  const email = s.email || "student@mentormatrix.com";
-                  const usn = s.usn || `STU100${s.id || i + 1}`;
-                  const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
-                  const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
-                  const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
-
-                  return (
-                    <TableRow key={s.id || i}>
-                      <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
-                        <User className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span>{studentName}</span>
-                      </TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
-                      <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          className={`text-[10px] font-bold ${
-                            isPresent
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                              : "bg-rose-600 hover:bg-rose-700 text-white"
-                          }`}
-                        >
-                          {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs">Subject / Session</TableHead>
-                  <TableHead className="text-xs">Time Marked</TableHead>
-                  <TableHead className="text-right text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.length > 0 ? (
-                  records.map((r, i) => (
-                    <TableRow key={r.id || i}>
-                      <TableCell className="font-mono text-xs font-medium">{r.date}</TableCell>
-                      <TableCell className="text-xs font-semibold">{r.subjectName || "Grooming & Skills"}</TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">
-                        {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge
-                          className={`text-[10px] font-bold ${
-                            r.status === "PRESENT"
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                              : "bg-rose-600 hover:bg-rose-700 text-white"
-                          }`}
-                        >
-                          {r.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
-                      No attendance records logged yet. Use Smart QR Control to mark attendance.
-                    </TableCell>
+                    <TableHead className="text-xs">Student Name</TableHead>
+                    <TableHead className="text-xs">Email Address</TableHead>
+                    <TableHead className="text-xs">USN / ID</TableHead>
+                    <TableHead className="text-xs">Time Marked</TableHead>
+                    <TableHead className="text-right text-xs">Status</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {students.map((s: any, i: number) => {
+                    const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
+                    const email = s.email || "student@mentormatrix.com";
+                    const usn = s.usn || `STU100${s.id || i + 1}`;
+                    const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
+                    const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
+                    const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
+
+                    return (
+                      <TableRow key={s.id || i}>
+                        <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
+                          <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span>{studentName}</span>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
+                        <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            className={`text-[10px] font-bold ${
+                              isPresent
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                : "bg-rose-600 hover:bg-rose-700 text-white"
+                            }`}
+                          >
+                            {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Subject</TableHead>
+                    <TableHead className="text-xs">Time Marked</TableHead>
+                    <TableHead className="text-right text-xs">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {records.length > 0 ? (
+                    records.slice(0, 10).map((r, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium text-xs font-mono">{r.date}</TableCell>
+                        <TableCell className="text-xs font-semibold">{r.subjectName || "Grooming & Skills"}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {r.markedAt ? new Date(r.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            className={`text-[10px] font-bold ${
+                              r.status === "PRESENT"
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                : "bg-rose-600 hover:bg-rose-700 text-white"
+                            }`}
+                          >
+                            {r.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
+                        No attendance records logged yet. Use Smart QR Control to mark attendance.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

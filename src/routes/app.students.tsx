@@ -198,10 +198,10 @@ function StudentsPage() {
 
       {/* ATTENDANCE HISTORY MODAL WITH REAL STUDENT ROSTER (NAME, EMAIL, USN, TIME, STATUS) */}
       <Dialog open={historyModalOpen} onOpenChange={setHistoryModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
-              <History className="h-5 w-5 text-primary" /> Student Attendance Roster — {selectedBatch?.batchCode || selectedBatch?.name}
+              <History className="h-5 w-5 text-primary shrink-0" /> Student Attendance Roster — {selectedBatch?.batchCode || selectedBatch?.name}
             </DialogTitle>
             <DialogDescription className="text-xs">
               Batch: <strong>{selectedBatch?.subjectName || "Grooming"}</strong> | Branch: <strong>{selectedBatch?.branch || "Rajajinagar Jspiders"}</strong> | Trainer: <strong>{selectedBatch?.trainerName || "Laxman Ashok Handenavar"}</strong>
@@ -209,75 +209,77 @@ function StudentsPage() {
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-1 max-w-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 w-full sm:max-w-xs">
                 <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
                 <Input
                   placeholder="Search student name, email or USN..."
                   value={historyDateSearch}
                   onChange={(e) => setHistoryDateSearch(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs w-full"
                 />
               </div>
-              <div className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-md border border-emerald-500/20">
+              <div className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-md border border-emerald-500/20 text-center sm:text-right">
                 Total Registered: {totalRegisteredStudents} Students
               </div>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Student Name</TableHead>
-                  <TableHead className="text-xs">Email Address</TableHead>
-                  <TableHead className="text-xs">USN / ID</TableHead>
-                  <TableHead className="text-xs">Time Marked</TableHead>
-                  <TableHead className="text-right text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {studentsList
-                  .filter((s) => {
-                    if (!historyDateSearch.trim()) return true;
-                    const query = historyDateSearch.toLowerCase();
-                    return (
-                      (s.name && s.name.toLowerCase().includes(query)) ||
-                      (s.email && s.email.toLowerCase().includes(query)) ||
-                      (s.usn && s.usn.toLowerCase().includes(query))
-                    );
-                  })
-                  .map((s: any, i: number) => {
-                    const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
-                    const email = s.email || "student@mentormatrix.com";
-                    const usn = s.usn || `STU100${s.id || i + 1}`;
-                    const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
-                    const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
-                    const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Student Name</TableHead>
+                    <TableHead className="text-xs">Email Address</TableHead>
+                    <TableHead className="text-xs">USN / ID</TableHead>
+                    <TableHead className="text-xs">Time Marked</TableHead>
+                    <TableHead className="text-right text-xs">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {studentsList
+                    .filter((s) => {
+                      if (!historyDateSearch.trim()) return true;
+                      const query = historyDateSearch.toLowerCase();
+                      return (
+                        (s.name && s.name.toLowerCase().includes(query)) ||
+                        (s.email && s.email.toLowerCase().includes(query)) ||
+                        (s.usn && s.usn.toLowerCase().includes(query))
+                      );
+                    })
+                    .map((s: any, i: number) => {
+                      const studentName = s.name || (s.email ? s.email.split("@")[0] : `Student ${s.id}`);
+                      const email = s.email || "student@mentormatrix.com";
+                      const usn = s.usn || `STU100${s.id || i + 1}`;
+                      const matchRecord = records.find(r => r.userEmail === s.email || r.userName === s.name);
+                      const isPresent = Boolean(matchRecord && matchRecord.status === "PRESENT");
+                      const timeMarked = isPresent && matchRecord?.markedAt ? new Date(matchRecord.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-";
 
-                    return (
-                      <TableRow key={s.id || i}>
-                        <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
-                          <User className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span>{studentName}</span>
-                        </TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
-                        <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge
-                            className={`text-[10px] font-bold ${
-                              isPresent
-                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                : "bg-rose-600 hover:bg-rose-700 text-white"
-                            }`}
-                          >
-                            {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
+                      return (
+                        <TableRow key={s.id || i}>
+                          <TableCell className="font-semibold text-xs text-foreground flex items-center gap-2">
+                            <User className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span>{studentName}</span>
+                          </TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{email}</TableCell>
+                          <TableCell className="text-xs font-mono font-bold text-primary">{usn}</TableCell>
+                          <TableCell className="text-xs font-mono text-muted-foreground">{timeMarked}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge
+                              className={`text-[10px] font-bold ${
+                                isPresent
+                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  : "bg-rose-600 hover:bg-rose-700 text-white"
+                              }`}
+                            >
+                              {isPresent ? "PRESENT ✓" : "ABSENT ✕"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
