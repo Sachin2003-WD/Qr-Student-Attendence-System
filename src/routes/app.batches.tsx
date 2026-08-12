@@ -317,10 +317,10 @@ function AdminBatchesView() {
   // Create Batch Form States
   const [batchCode, setBatchCode] = useState("");
   const [batchName, setBatchName] = useState("");
-  const [subjectName, setSubjectName] = useState("Grooming");
-  const [branch, setBranch] = useState("Rajajinagar Jspiders");
-  const [classTiming, setClassTiming] = useState("04:45 PM");
-  const [trainerName, setTrainerName] = useState("Laxman Ashok Handenavar");
+  const [subjectName, setSubjectName] = useState("");
+  const [branch, setBranch] = useState("");
+  const [classTiming, setClassTiming] = useState("");
+  const [trainerName, setTrainerName] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [creating, setCreating] = useState(false);
 
@@ -360,13 +360,25 @@ function AdminBatchesView() {
   const handleOpenModal = () => {
     setBatchCode("");
     setBatchName("");
-    setSubjectName("Grooming");
-    setBranch("Rajajinagar Jspiders");
-    setTrainerName("Laxman Ashok Handenavar");
-    const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setClassTiming(nowTime);
+    setSubjectName("");
+    setBranch("");
+    setTrainerName("");
+    setClassTiming("09:00");
     setStartDate(new Date().toISOString().split("T")[0]);
     setShowModal(true);
+  };
+
+  const formatTime12H = (time24: string): string => {
+    if (!time24) return "09:00 AM";
+    if (time24.includes("AM") || time24.includes("PM")) return time24;
+    const [h, m] = time24.split(":");
+    let hours = parseInt(h, 10);
+    const minutes = m || "00";
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const strHours = hours < 10 ? "0" + hours : hours;
+    return `${strHours}:${minutes} ${ampm}`;
   };
 
   const handleCreateBatch = async (e: React.FormEvent) => {
@@ -379,13 +391,14 @@ function AdminBatchesView() {
     try {
       setCreating(true);
       const codeUpper = batchCode.trim().toUpperCase();
+      const formattedTime = formatTime12H(classTiming);
       await api.createBatch({
         name: batchName.trim(),
         batchCode: codeUpper,
-        subjectName,
-        branch,
-        classTiming,
-        trainerName,
+        subjectName: subjectName.trim() || "General Subject",
+        branch: branch.trim() || "Main Campus",
+        classTiming: formattedTime,
+        trainerName: trainerName.trim() || "Faculty Trainer",
         startDate,
       });
       toast.success(`Batch ${codeUpper} created successfully!`);
@@ -455,12 +468,12 @@ function AdminBatchesView() {
 
           <form onSubmit={handleCreateBatch} className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Batch Code (e.g. JRA-GROGRD-E532)</Label>
+              <Label className="text-xs font-semibold">Batch Code</Label>
               <Input
                 required
                 value={batchCode}
                 onChange={(e) => setBatchCode(e.target.value)}
-                placeholder="e.g. JRA-GROGRD-E532"
+                placeholder="e.g. JAVA-2026-B1"
                 className="h-9 text-xs font-mono font-bold uppercase"
               />
             </div>
@@ -471,7 +484,7 @@ function AdminBatchesView() {
                 required
                 value={batchName}
                 onChange={(e) => setBatchName(e.target.value)}
-                placeholder="e.g. Grooming Evening Batch E532"
+                placeholder="e.g. Java Full Stack Morning Batch"
                 className="h-9 text-xs"
               />
             </div>
@@ -483,7 +496,7 @@ function AdminBatchesView() {
                   required
                   value={subjectName}
                   onChange={(e) => setSubjectName(e.target.value)}
-                  placeholder="Grooming"
+                  placeholder="e.g. Core Java & Spring Boot"
                   className="h-9 text-xs"
                 />
               </div>
@@ -493,7 +506,7 @@ function AdminBatchesView() {
                   required
                   value={branch}
                   onChange={(e) => setBranch(e.target.value)}
-                  placeholder="Rajajinagar Jspiders"
+                  placeholder="e.g. Bengaluru Main Campus"
                   className="h-9 text-xs"
                 />
               </div>
@@ -501,23 +514,23 @@ function AdminBatchesView() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Class Start Time (Auto Set)</Label>
+                <Label className="text-xs font-semibold">Class Start Time</Label>
                 <Input
+                  type="time"
                   required
                   value={classTiming}
                   onChange={(e) => setClassTiming(e.target.value)}
-                  placeholder="04:45 PM"
-                  className="h-9 text-xs font-mono"
+                  className="h-9 text-xs font-mono cursor-pointer"
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Start Date (Auto Set)</Label>
+                <Label className="text-xs font-semibold">Start Date</Label>
                 <Input
                   type="date"
                   required
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="h-9 text-xs font-mono"
+                  className="h-9 text-xs font-mono cursor-pointer"
                 />
               </div>
             </div>
@@ -528,7 +541,7 @@ function AdminBatchesView() {
                 required
                 value={trainerName}
                 onChange={(e) => setTrainerName(e.target.value)}
-                placeholder="Laxman Ashok Handenavar"
+                placeholder="e.g. Rahul Sharma"
                 className="h-9 text-xs"
               />
             </div>

@@ -61,4 +61,18 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
 
     @Query("SELECT COUNT(a) FROM Attendance a WHERE a.date = :date AND a.status = :status AND a.deleted = false")
     long countByDateAndStatus(@Param("date") LocalDate date, @Param("status") AttendanceStatus status);
+
+    @Query("SELECT a FROM Attendance a WHERE a.deleted = false " +
+           "AND (:batchId IS NULL OR (a.attendanceSession IS NOT NULL AND a.attendanceSession.batch.id = :batchId)) " +
+           "AND (:subjectId IS NULL OR (a.attendanceSession IS NOT NULL AND a.attendanceSession.subject.id = :subjectId)) " +
+           "AND (:startDate IS NULL OR (a.attendanceDate >= :startDate OR a.date >= :startDate)) " +
+           "AND (:endDate IS NULL OR (a.attendanceDate <= :endDate OR a.date <= :endDate)) " +
+           "AND (:status IS NULL OR a.status = :status) " +
+           "ORDER BY a.markedAt DESC")
+    List<Attendance> searchAttendanceHistory(
+            @Param("batchId") Long batchId,
+            @Param("subjectId") Long subjectId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("status") AttendanceStatus status);
 }

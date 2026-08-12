@@ -40,6 +40,19 @@ public class AttendanceController {
 
     private final AttendanceService attendanceService;
     private final ReportExportService reportExportService;
+    private final com.mentormatrix.repository.StudentRepository studentRepository;
+
+    private void verifyStudentAccess(Long studentId, CustomUserDetails userDetails) {
+        boolean isStudent = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_STUDENT"));
+        if (isStudent) {
+            com.mentormatrix.entity.Student student = studentRepository.findByEmailAndDeletedFalse(userDetails.getUsername())
+                    .orElseThrow(() -> new com.mentormatrix.exception.ForbiddenException("Student profile not found."));
+            if (!student.getId().equals(studentId)) {
+                throw new com.mentormatrix.exception.ForbiddenException("Access denied: You can only view your own attendance records.");
+            }
+        }
+    }
 
     @GetMapping("/qr/daily")
     @PreAuthorize("hasAnyRole('FACULTY', 'MENTOR', 'ADMIN')")
@@ -81,17 +94,17 @@ public class AttendanceController {
 
     @PostMapping("/sessions")
     @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN')")
-    public ResponseEntity<ApiResponse<AttendanceSession>> createSession(
+    public ResponseEntity<ApiResponse<com.mentormatrix.dto.response.AttendanceSessionResponse>> createSession(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody AttendanceSessionRequest request) {
-        AttendanceSession session = attendanceService.createAttendanceSession(request, userDetails.getUsername());
+        com.mentormatrix.dto.response.AttendanceSessionResponse session = attendanceService.createAttendanceSession(request, userDetails.getUsername());
         return ResponseEntity.ok(ApiResponse.success("Attendance session created successfully", session));
     }
 
     @PostMapping("/sessions/{sessionId}/start")
     @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN')")
-    public ResponseEntity<ApiResponse<AttendanceSession>> startSession(@PathVariable Long sessionId) {
-        AttendanceSession session = attendanceService.startAttendanceSession(sessionId);
+    public ResponseEntity<ApiResponse<com.mentormatrix.dto.response.AttendanceSessionResponse>> startSession(@PathVariable Long sessionId) {
+        com.mentormatrix.dto.response.AttendanceSessionResponse session = attendanceService.startAttendanceSession(sessionId);
         return ResponseEntity.ok(ApiResponse.success("Attendance session started", session));
     }
 
@@ -106,8 +119,8 @@ public class AttendanceController {
 
     @PostMapping("/sessions/{sessionId}/close")
     @PreAuthorize("hasAnyRole('FACULTY', 'ADMIN')")
-    public ResponseEntity<ApiResponse<AttendanceSession>> closeSession(@PathVariable Long sessionId) {
-        AttendanceSession session = attendanceService.closeAttendanceSession(sessionId);
+    public ResponseEntity<ApiResponse<com.mentormatrix.dto.response.AttendanceSessionResponse>> closeSession(@PathVariable Long sessionId) {
+        com.mentormatrix.dto.response.AttendanceSessionResponse session = attendanceService.closeAttendanceSession(sessionId);
         return ResponseEntity.ok(ApiResponse.success("Attendance session closed", session));
     }
 
@@ -120,7 +133,10 @@ public class AttendanceController {
 
     @GetMapping("/student/{studentId}")
     @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY', 'ADMIN')")
-    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getStudentAttendance(@PathVariable Long studentId) {
+    public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getStudentAttendance(
+            @PathVariable Long studentId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        verifyStudentAccess(studentId, userDetails);
         List<AttendanceResponse> response = attendanceService.getStudentAttendance(studentId);
         return ResponseEntity.ok(ApiResponse.success("Student attendance records fetched", response));
     }
@@ -129,7 +145,9 @@ public class AttendanceController {
     @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY', 'ADMIN')")
     public ResponseEntity<ApiResponse<BatchAttendanceResponse>> getStudentBatchAttendance(
             @PathVariable Long studentId,
-            @PathVariable Long batchId) {
+            @PathVariable Long batchId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        verifyStudentAccess(studentId, userDetails);
         BatchAttendanceResponse response = attendanceService.getStudentBatchAttendance(studentId, batchId);
         return ResponseEntity.ok(ApiResponse.success("Student batch attendance fetched", response));
     }
@@ -180,7 +198,7 @@ public class AttendanceController {
     }
 
     @GetMapping("/report")
-    @PreAuthorize("hasAnyRole('STUDENT', 'FACULTY', 'MENTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('FACULTY', 'MENTOR', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendanceReport(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

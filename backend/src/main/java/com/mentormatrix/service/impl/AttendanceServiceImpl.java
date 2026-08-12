@@ -246,7 +246,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional
-    public AttendanceSession createAttendanceSession(AttendanceSessionRequest request, String creatorEmail) {
+    public com.mentormatrix.dto.response.AttendanceSessionResponse createAttendanceSession(AttendanceSessionRequest request, String creatorEmail) {
         Batch batch = batchRepository.findById(request.getBatchId())
                 .orElseThrow(() -> new ResourceNotFoundException("Batch not found with ID: " + request.getBatchId()));
 
@@ -280,21 +280,23 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .deleted(false)
                 .build();
 
-        return sessionRepository.save(session);
+        AttendanceSession saved = sessionRepository.save(session);
+        return mapToAttendanceSessionResponse(saved);
     }
 
     @Override
     @Transactional
-    public AttendanceSession startAttendanceSession(Long sessionId) {
+    public com.mentormatrix.dto.response.AttendanceSessionResponse startAttendanceSession(Long sessionId) {
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance Session not found with ID: " + sessionId));
         session.setStatus(AttendanceSessionStatus.ACTIVE);
-        return sessionRepository.save(session);
+        AttendanceSession saved = sessionRepository.save(session);
+        return mapToAttendanceSessionResponse(saved);
     }
 
     @Override
     @Transactional
-    public AttendanceSession closeAttendanceSession(Long sessionId) {
+    public com.mentormatrix.dto.response.AttendanceSessionResponse closeAttendanceSession(Long sessionId) {
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance Session not found with ID: " + sessionId));
 
@@ -342,7 +344,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .build();
         auditLogRepository.save(auditLog);
 
-        return closedSession;
+        return mapToAttendanceSessionResponse(closedSession);
     }
 
     @Override
@@ -411,6 +413,11 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .build();
 
         Attendance saved = attendanceRepository.save(attendance);
+
+        // Single-use QR token invalidation to prevent replay attacks
+        qrCode.setActive(false);
+        qrCode.setDeleted(true);
+        qrCodeRepository.save(qrCode);
 
         // Audit log
         AuditLog auditLog = AuditLog.builder()
@@ -526,14 +533,8 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     public List<AttendanceResponse> searchAttendanceHistory(Long batchId, Long subjectId, LocalDate startDate, LocalDate endDate, AttendanceStatus status) {
-        List<Attendance> records = attendanceRepository.findAll();
+        List<Attendance> records = attendanceRepository.searchAttendanceHistory(batchId, subjectId, startDate, endDate, status);
         return records.stream()
-                .filter(r -> !r.getDeleted())
-                .filter(r -> batchId == null || (r.getAttendanceSession() != null && r.getAttendanceSession().getBatch().getId().equals(batchId)))
-                .filter(r -> subjectId == null || (r.getAttendanceSession() != null && r.getAttendanceSession().getSubject().getId().equals(subjectId)))
-                .filter(r -> startDate == null || (r.getAttendanceDate() != null && !r.getAttendanceDate().isBefore(startDate)))
-                .filter(r -> endDate == null || (r.getAttendanceDate() != null && !r.getAttendanceDate().isAfter(endDate)))
-                .filter(r -> status == null || r.getStatus() == status)
                 .map(this::mapToAttendanceResponse)
                 .collect(Collectors.toList());
     }
@@ -577,6 +578,27 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .recordedByFacultyEmail(attendance.getRecordedByFacultyEmail())
                 .deviceInfo(attendance.getDeviceInfo())
                 .ipAddress(attendance.getIpAddress())
+                .build();
+    }
+
+    private com.mentormatrix.dto.response.AttendanceSessionResponse mapToAttendanceSessionResponse(AttendanceSession session) {
+        if (session == null) return null;
+        return com.mentormatrix.dto.response.AttendanceSessionResponse.builder()
+                .id(session.getId())
+                .batchId(session.getBatch() != null ? session.getBatch().getId() : null)
+                .batchName(session.getBatch() != null ? session.getBatch().getName() : null)
+                .batchCode(session.getBatch() != null ? session.getBatch().getBatchCode() : null)
+                .subjectId(session.getSubject() != null ? session.getSubject().getId() : null)
+                .subjectName(session.getSubject() != null ? session.getSubject().getName() : null)
+                .subjectCode(session.getSubject() != null ? session.getSubject().getCode() : null)
+                .facultyId(session.getFaculty() != null ? session.getFaculty().getId() : null)
+                .facultyName(session.getFaculty() != null ? session.getFaculty().getName() : null)
+                .sessionDate(session.getSessionDate())
+                .startTime(session.getStartTime())
+                .endTime(session.getEndTime())
+                .status(session.getStatus())
+                .qrToken(session.getQrToken())
+                .qrExpiresAt(session.getQrExpiresAt())
                 .build();
     }
 }

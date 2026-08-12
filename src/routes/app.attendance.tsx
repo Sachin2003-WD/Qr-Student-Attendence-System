@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApp } from "@/lib/app-context";
 import {
-  api, TODAY_SUBJECT_SESSIONS, getRealtimeSubjectSessions, type QRCodeResponse, type AttendanceResponse,
+  api, getRealtimeSubjectSessions, type QRCodeResponse, type AttendanceResponse,
   type AttendanceSummaryResponse
 } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import {
   QrCode, RefreshCw, CheckCircle2, Clock,
   FileSpreadsheet, FileText, Scan, BookOpen, Camera, Play, StopCircle, UserCheck, AlertCircle, XCircle, AlertTriangle
 } from "lucide-react";
+import jsQR from "jsqr";
 
 export const Route = createFileRoute("/app/attendance")({
   head: () => ({
@@ -52,7 +53,7 @@ function StudentAttendanceView() {
   const [qrData, setQrData] = useState<QRCodeResponse | null>(null);
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(15);
+  const [secondsLeft, setSecondsLeft] = useState(120); // 2 minutes (120s)
 
   const activeSessions = getRealtimeSubjectSessions();
 
@@ -61,7 +62,7 @@ function StudentAttendanceView() {
       setLoading(true);
       const res = await api.getDynamicStudentQRCode();
       setQrData(res);
-      setSecondsLeft(15);
+      setSecondsLeft(120); // Reset timer to 2 minutes
     } catch (err: any) {
       toast.error(err.message || "Failed to generate dynamic QR code");
     } finally {
@@ -96,7 +97,7 @@ function StudentAttendanceView() {
     };
   }, [fetchSummary]);
 
-  // 15-second dynamic QR auto-rotation timer
+  // 120-second (2 minutes) dynamic QR auto-rotation timer
   useEffect(() => {
     if (secondsLeft <= 0) {
       fetchDynamicQR();
@@ -105,6 +106,9 @@ function StudentAttendanceView() {
     const timer = setInterval(() => setSecondsLeft((prev) => prev - 1), 1000);
     return () => clearInterval(timer);
   }, [secondsLeft]);
+
+  const minutesDisplay = Math.floor(secondsLeft / 60);
+  const secondsDisplay = String(secondsLeft % 60).padStart(2, "0");
 
   return (
     <div className="space-y-6">
@@ -136,7 +140,7 @@ function StudentAttendanceView() {
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-              <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes automatically in <strong>{secondsLeft}s</strong>
+              <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes automatically in <strong>{minutesDisplay}m {secondsDisplay}s</strong>
             </p>
           </CardContent>
         </Card>
@@ -157,21 +161,29 @@ function StudentAttendanceView() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
-            {activeSessions.map((s: any, idx: number) => (
-              <div key={s.code || idx} className="p-3.5 rounded-xl border border-border/60 bg-muted/20 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-foreground">{s.name}</span>
-                  <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
-                    {s.code}
-                  </Badge>
+            {activeSessions.length > 0 ? (
+              activeSessions.map((s: any, idx: number) => (
+                <div key={s.code || idx} className="p-3.5 rounded-xl border border-border/60 bg-muted/20 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-foreground">{s.name}</span>
+                    <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                      {s.code}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-mono">
+                    <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3.5 w-3.5 text-primary" /> {s.time}</span>
+                    <span>• {s.faculty}</span>
+                    <span>• {s.room}</span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-mono">
-                  <span className="flex items-center gap-1 font-semibold text-foreground"><Clock className="h-3.5 w-3.5 text-primary" /> {s.time}</span>
-                  <span>• {s.faculty}</span>
-                  <span>• {s.room}</span>
-                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center border border-dashed rounded-xl p-4 text-muted-foreground space-y-2">
+                <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/40" />
+                <p className="text-xs font-semibold">No active subject sessions configured by Administrator yet.</p>
+                <p className="text-[11px] text-muted-foreground">Present your dynamic QR code to the Administrator camera scanner when session begins.</p>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>
@@ -345,8 +357,60 @@ function AdminAttendanceView() {
     };
   }, [loadInitialLogs]);
 
-  // Handle Camera Video Stream
+  // Handle Camera Video Stream & Real-time QR Code Frame Decoder
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastScannedTokenRef = useRef<string>("");
+
+  const processScannedToken = async (tokenToScan: string) => {
+    if (!tokenToScan.trim()) return;
+
+    if (!sessionActive) {
+      toast.error("Attendance session is currently STOPPED! Click 'Start Session' above to begin taking attendance.");
+      setScanResult({
+        success: false,
+        message: "Attendance session is currently STOPPED.",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = tokenToScan.trim();
+
+      const response = await api.scanQrToken(activeSessionId, token);
+      const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      const newResult = {
+        success: true,
+        studentName: response.userName || "Student User",
+        studentId: "STU" + (response.id || Date.now()),
+        batchCode: selectedBatchCode || "BATCH-01",
+        subject: selectedSubject,
+        date: currentDateStr,
+        time: nowTime,
+      };
+
+      setScanResult(newResult);
+      setPresentCount((prev) => prev + 1);
+      setScannedList((prev) => [response, ...prev.filter((r) => r.id !== response.id)]);
+      toast.success(`✓ Attendance Marked: ${response.userName || "Student"} [PRESENT]`);
+      setQrInputToken("");
+      loadInitialLogs();
+    } catch (err: any) {
+      const errMsg = err.message || "Invalid or expired QR code token!";
+      toast.error(errMsg);
+      setScanResult({
+        success: false,
+        message: errMsg,
+      });
+      setQrInputToken("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
+    let animationFrameId: number;
     let stream: MediaStream | null = null;
 
     if (cameraActive && sessionActive) {
@@ -357,6 +421,35 @@ function AdminAttendanceView() {
           if (videoRef.current) {
             videoRef.current.srcObject = s;
             videoRef.current.play();
+
+            const scanFrame = () => {
+              if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+                const video = videoRef.current;
+                if (!canvasRef.current) {
+                  canvasRef.current = document.createElement("canvas");
+                }
+                const canvas = canvasRef.current;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                  const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                  });
+                  if (code && code.data && code.data !== lastScannedTokenRef.current) {
+                    lastScannedTokenRef.current = code.data;
+                    processScannedToken(code.data);
+                    setTimeout(() => {
+                      lastScannedTokenRef.current = "";
+                    }, 3000);
+                  }
+                }
+              }
+              animationFrameId = requestAnimationFrame(scanFrame);
+            };
+            animationFrameId = requestAnimationFrame(scanFrame);
           }
         })
         .catch(() => {
@@ -372,6 +465,7 @@ function AdminAttendanceView() {
     }
 
     return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
@@ -425,51 +519,7 @@ function AdminAttendanceView() {
 
   const handleScanTokenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!qrInputToken.trim()) return;
-
-    if (!sessionActive) {
-      toast.error("Attendance session is currently STOPPED! Click 'Start Session' above to begin taking attendance.");
-      setScanResult({
-        success: false,
-        message: "Attendance session is currently STOPPED.",
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const token = qrInputToken.trim();
-
-      const response = await api.scanQrToken(activeSessionId, token);
-      const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-      const newResult = {
-        success: true,
-        studentName: response.userName || "Student User",
-        studentId: "STU" + (response.id || Date.now()),
-        batchCode: selectedBatchCode || "BATCH-01",
-        subject: selectedSubject,
-        date: currentDateStr,
-        time: nowTime,
-      };
-
-      setScanResult(newResult);
-      setPresentCount((prev) => prev + 1);
-      setScannedList((prev) => [response, ...prev.filter((r) => r.id !== response.id)]);
-      toast.success(`✓ Attendance Marked: ${response.userName || "Student"} [PRESENT]`);
-      setQrInputToken("");
-      loadInitialLogs();
-    } catch (err: any) {
-      const errMsg = err.message || "Invalid or expired QR code token!";
-      toast.error(errMsg);
-      setScanResult({
-        success: false,
-        message: errMsg,
-      });
-      setQrInputToken("");
-    } finally {
-      setLoading(false);
-    }
+    await processScannedToken(qrInputToken);
   };
 
   const absentCount = Math.max(totalStudents - presentCount, 0);

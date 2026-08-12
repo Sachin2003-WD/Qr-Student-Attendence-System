@@ -61,4 +61,21 @@ public class Faculty extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private FacultyStatus status = FacultyStatus.ACTIVE;
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public String getFacultyId() { return facultyId; }
+    public void setFacultyId(String facultyId) { this.facultyId = facultyId; }
+    public Department getDepartment() { return department; }
+    public void setDepartment(Department department) { this.department = department; }
+    public String getDesignation() { return designation; }
+    public void setDesignation(String designation) { this.designation = designation; }
+
+    public String getName() {
+        return user != null ? user.getName() : "Faculty Member";
+    }
+
+    public String getEmail() {
+        return user != null ? user.getEmail() : null;
+    }
 }

@@ -28,13 +28,23 @@ export const Route = createFileRoute("/app/profile")({
 
 function Profile() {
   const { role, userName, userEmail, updateUserName } = useApp();
-  const [name, setName] = useState(userName);
-  const [email, setEmail] = useState(userEmail || "user@college.edu");
-  const [phone, setPhone] = useState("+91 98765 43210");
+  const [name, setName] = useState(userName || "");
+  const [email, setEmail] = useState(userEmail || "");
+  const [phone, setPhone] = useState("");
   const [dept, setDept] = useState(departments[0]);
+  const [semester, setSemester] = useState("");
+  const [skills, setSkills] = useState("");
+  const [interests, setInterests] = useState("");
+  const [adminRoleDetails, setAdminRoleDetails] = useState("");
+  const [adminNotes, setAdminNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const initials = name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("") || "U";
+  const initials = (name || "User")
+    .split(" ")
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("") || "U";
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +73,7 @@ function Profile() {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <h2 className="mt-4 text-lg font-semibold">{name}</h2>
+            <h2 className="mt-4 text-lg font-semibold">{name || "User Profile"}</h2>
             <Badge variant="secondary" className="mt-1 capitalize">{role}</Badge>
             <Button variant="outline" size="sm" className="mt-4 w-full gap-1">
               <Upload className="h-4 w-4" /> Upload photo
@@ -79,31 +89,46 @@ function Profile() {
                 <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Enter full name" />
               </div>
               <div className="grid gap-2">
-                <Label>Email</Label>
+                <Label>Email address</Label>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="e.g. user@college.edu" />
               </div>
               <div className="grid gap-2">
-                <Label>Phone</Label>
-                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+                <Label>Phone number</Label>
+                <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +91 98765 43210" />
               </div>
               <div className="grid gap-2">
                 <Label>Department</Label>
                 <Select value={dept} onValueChange={setDept}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                   <SelectContent>{departments.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               {role === "student" && (
                 <>
-                  <div className="grid gap-2"><Label>Semester</Label><Input type="number" min={1} max={8} defaultValue={5} /></div>
-                  <div className="grid gap-2 sm:col-span-2"><Label>Skills</Label><Input defaultValue="Python, Data Structures, AI" /></div>
-                  <div className="grid gap-2 sm:col-span-2"><Label>Interests</Label><Input defaultValue="Machine Learning, Web Development" /></div>
+                  <div className="grid gap-2">
+                    <Label>Semester</Label>
+                    <Input type="number" min={1} max={8} value={semester} onChange={(e) => setSemester(e.target.value)} placeholder="Enter semester (1-8)" />
+                  </div>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label>Technical Skills</Label>
+                    <Input value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g. Java, Python, Data Structures, Web Development" />
+                  </div>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label>Areas of Interest</Label>
+                    <Input value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="e.g. Machine Learning, Cloud Computing, Full Stack Development" />
+                  </div>
                 </>
               )}
               {role === "admin" && (
                 <>
-                  <div className="grid gap-2 sm:col-span-2"><Label>System Administrator Role</Label><Input defaultValue="Full System & Batch Access" disabled /></div>
-                  <div className="grid gap-2 sm:col-span-2"><Label>Department Notes</Label><Textarea rows={3} defaultValue="Administrator in Smart Attendance Control." /></div>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label>System Administrator Designation</Label>
+                    <Input value={adminRoleDetails} onChange={(e) => setAdminRoleDetails(e.target.value)} placeholder="e.g. Chief Administrator & Attendance Coordinator" />
+                  </div>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label>Department Notes & Bio</Label>
+                    <Textarea rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Enter department notes, administrative access details, or bio..." />
+                  </div>
                 </>
               )}
               <div className="sm:col-span-2 flex justify-end gap-2">

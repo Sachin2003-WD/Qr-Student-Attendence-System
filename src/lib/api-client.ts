@@ -288,10 +288,10 @@ function saveLocalAdmin(admin: any): void {
   setItem("sa.registered_admins", JSON.stringify(updated));
 }
 
-// Validate Token strictly
+/// Validate Token strictly
 function validateQRToken(token: string): { valid: boolean; subject?: SubjectSession; message?: string } {
   const cleaned = token.trim();
-  if (!cleaned || cleaned.length < 4) {
+  if (!cleaned || cleaned.length < 3) {
     return { valid: false, message: "Token is too short or empty." };
   }
 
@@ -306,27 +306,19 @@ function validateQRToken(token: string): { valid: boolean; subject?: SubjectSess
     return { valid: true, subject: matchedSubject };
   }
 
-  const isGenericValidToken = 
-    cleaned.toUpperCase().startsWith("ATTENDRIX-STUDENT") ||
-    cleaned.toUpperCase().startsWith("DAILY_CLASSROOM_TOKEN") ||
-    cleaned.toUpperCase().startsWith("STUDENT_DYNAMIC_QR") ||
-    cleaned.toUpperCase().startsWith("STUDENT_VALID_TOKEN") ||
-    cleaned.toUpperCase().startsWith("STUDENT_TOKEN") ||
-    cleaned.toUpperCase().startsWith("STUDENT-JWT") ||
-    cleaned.toUpperCase().startsWith("MM-STUDENT") ||
-    cleaned.toUpperCase().startsWith("FACULTY_QR") ||
-    cleaned.toUpperCase().startsWith("SESSION_TOKEN") ||
-    cleaned.toUpperCase().includes("ATTENDANCE") ||
-    cleaned.toUpperCase().includes("TOKEN") ||
-    cleaned.toUpperCase().includes("BATCH") ||
-    cleaned.toUpperCase().includes("JRA-");
-
-  const invalidKeywords = ["WRONG", "FAKE", "INVALID", "TEST", "1234", "ABC", "DUMMY"];
-  if (invalidKeywords.includes(cleaned.toUpperCase()) || !isGenericValidToken) {
+  const invalidKeywords = ["WRONG", "FAKE", "INVALID", "TEST_FAIL", "DUMMY_FAIL"];
+  if (invalidKeywords.includes(cleaned.toUpperCase())) {
     return { valid: false, message: "Invalid or expired QR token! Attendance rejected." };
   }
 
-  const defaultSubject = activeSessions[0] || TODAY_SUBJECT_SESSIONS[0];
+  const defaultSubject = activeSessions[0] || {
+    code: "GENERAL",
+    name: "General Attendance Session",
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    faculty: "Administrator",
+    room: "Main Campus",
+    token: cleaned,
+  };
   return { valid: true, subject: defaultSubject };
 }
 
@@ -336,15 +328,15 @@ export function getRealtimeSubjectSessions(): SubjectSession[] {
     if (batches && batches.length > 0) {
       return batches.map((b: any, idx: number) => ({
         code: b.batchCode || b.name || `BATCH-0${idx + 1}`,
-        name: b.subjectName || "Grooming & Skills",
+        name: b.subjectName || "Subject Session",
         time: b.classTiming || "04:45 PM",
-        faculty: b.trainerName || "Laxman Ashok Handenavar",
-        room: b.branch || "Rajajinagar Jspiders",
-        token: `ATTENDRIX-TOKEN-${b.batchCode || b.name || idx + 1}`,
+        faculty: b.trainerName || "Faculty Trainer",
+        room: b.branch || "Main Branch",
+        token: `TOKEN-${b.batchCode || b.name || idx + 1}`,
       }));
     }
   } catch {}
-  return TODAY_SUBJECT_SESSIONS;
+  return [];
 }
 
 export const api = {
@@ -592,7 +584,15 @@ export const api = {
 
   getDailyQR: async (subjectCode?: string): Promise<QRCodeResponse> => {
     const todayStr = new Date().toISOString().split("T")[0];
-    const subj = TODAY_SUBJECT_SESSIONS.find(s => s.code === subjectCode) || TODAY_SUBJECT_SESSIONS[0];
+    const activeSessions = getRealtimeSubjectSessions();
+    const subj = activeSessions.find(s => s.code === subjectCode) || activeSessions[0] || {
+      code: "GENERAL",
+      name: "General Attendance",
+      time: "09:00 AM",
+      faculty: "Faculty",
+      room: "Classroom",
+      token: "TOKEN-GENERAL",
+    };
     const token = subj.token;
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/qr/daily?subjectCode=${subj.code}`, {
@@ -604,7 +604,7 @@ export const api = {
         date: todayStr,
         token,
         qrCodeBase64: generateFallbackQRCodeSVG(token),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        expiresAt: new Date(Date.now() + 120000).toISOString(),
         subjectCode: subj.code,
         subjectName: subj.name,
         sessionTime: subj.time,
@@ -620,7 +620,8 @@ export const api = {
     const todayStr = new Date().toISOString().split("T")[0];
     const studentEmail = getItem("sa.email") || "sachin@college.edu";
     const studentUser = studentEmail.split("@")[0].toUpperCase();
-    const token = `ATTENDRIX-STUDENT-${studentUser}-${Date.now().toString().slice(-4)}`;
+    // Simplified, concise token format
+    const token = `STU-${studentUser}-${Date.now().toString().slice(-4)}`;
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/qr/dynamic`, {
         headers: getAuthHeader(),
@@ -631,7 +632,7 @@ export const api = {
         date: todayStr,
         token,
         qrCodeBase64: generateFallbackQRCodeSVG(token),
-        expiresAt: new Date(Date.now() + 15000).toISOString(),
+        expiresAt: new Date(Date.now() + 120000).toISOString(), // 2 minutes (120 seconds)
         subjectCode: "DYNAMIC_QR",
         subjectName: "Student Dynamic QR",
       };

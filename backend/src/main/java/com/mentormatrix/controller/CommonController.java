@@ -13,8 +13,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/common")
 @Tag(name = "Common Controller", description = "Common endpoints for the application")
 @RequiredArgsConstructor
-@Slf4j
 public class CommonController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CommonController.class);
 
     private final RefreshTokenService refreshTokenService;
 

@@ -15,8 +15,9 @@ import java.util.Arrays;
 import java.util.UUID;
 
 @Component
-@Slf4j
 public class FileUploadUtil {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FileUploadUtil.class);
 
     @Value("${app.file.upload-dir:uploads}")
     private String uploadDir;

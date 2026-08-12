@@ -14,7 +14,6 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "admins")
-@SuperBuilder
 @Getter
 @Setter
 @NoArgsConstructor
@@ -71,5 +70,42 @@ public class Admin extends BaseEntity {
     public void setPassword(String password) {
         this.password = password;
         if (user != null) user.setPassword(password);
+    }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+
+    public static AdminBuilder builder() {
+        return new AdminBuilder();
+    }
+
+    public static class AdminBuilder {
+        private User user;
+        private String name;
+        private String email;
+        private String phone;
+        private String password;
+        private Boolean active = true;
+        private Boolean deleted = false;
+
+        public AdminBuilder user(User user) { this.user = user; return this; }
+        public AdminBuilder name(String name) { this.name = name; return this; }
+        public AdminBuilder email(String email) { this.email = email; return this; }
+        public AdminBuilder phone(String phone) { this.phone = phone; return this; }
+        public AdminBuilder password(String password) { this.password = password; return this; }
+        public AdminBuilder active(Boolean active) { this.active = active; return this; }
+        public AdminBuilder deleted(Boolean deleted) { this.deleted = deleted; return this; }
+
+        public Admin build() {
+            Admin a = new Admin();
+            a.setUser(user);
+            a.setName(name);
+            a.setEmail(email);
+            a.setPhone(phone);
+            a.setPassword(password);
+            a.setActive(active != null ? active : true);
+            a.setDeleted(deleted != null ? deleted : false);
+            return a;
+        }
     }
 }

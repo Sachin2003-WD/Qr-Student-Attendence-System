@@ -24,7 +24,6 @@ import java.time.LocalDate;
 @Table(name = "enrollments", uniqueConstraints = {
         @UniqueConstraint(name = "uk_enrollment_student_batch", columnNames = {"student_id", "batch_id"})
 })
-@SuperBuilder
 @Getter
 @Setter
 @NoArgsConstructor
@@ -44,8 +43,47 @@ public class Enrollment extends BaseEntity {
     @Column(name = "enrollment_date", nullable = false)
     private LocalDate enrollmentDate;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EnrollmentStatus status = EnrollmentStatus.ACTIVE;
+
+    public Student getStudent() { return student; }
+    public void setStudent(Student student) { this.student = student; }
+    public Batch getBatch() { return batch; }
+    public void setBatch(Batch batch) { this.batch = batch; }
+    public LocalDate getEnrollmentDate() { return enrollmentDate; }
+    public void setEnrollmentDate(LocalDate enrollmentDate) { this.enrollmentDate = enrollmentDate; }
+    public EnrollmentStatus getStatus() { return status; }
+    public void setStatus(EnrollmentStatus status) { this.status = status; }
+
+    public static EnrollmentBuilder builder() {
+        return new EnrollmentBuilder();
+    }
+
+    public static class EnrollmentBuilder {
+        private Student student;
+        private Batch batch;
+        private LocalDate enrollmentDate;
+        private EnrollmentStatus status = EnrollmentStatus.ACTIVE;
+        private Boolean active = true;
+        private Boolean deleted = false;
+
+        public EnrollmentBuilder student(Student student) { this.student = student; return this; }
+        public EnrollmentBuilder batch(Batch batch) { this.batch = batch; return this; }
+        public EnrollmentBuilder enrollmentDate(LocalDate enrollmentDate) { this.enrollmentDate = enrollmentDate; return this; }
+        public EnrollmentBuilder status(EnrollmentStatus status) { this.status = status; return this; }
+        public EnrollmentBuilder active(Boolean active) { this.active = active; return this; }
+        public EnrollmentBuilder deleted(Boolean deleted) { this.deleted = deleted; return this; }
+
+        public Enrollment build() {
+            Enrollment e = new Enrollment();
+            e.setStudent(student);
+            e.setBatch(batch);
+            e.setEnrollmentDate(enrollmentDate);
+            e.setStatus(status != null ? status : EnrollmentStatus.ACTIVE);
+            e.setActive(active != null ? active : true);
+            e.setDeleted(deleted != null ? deleted : false);
+            return e;
+        }
+    }
 }

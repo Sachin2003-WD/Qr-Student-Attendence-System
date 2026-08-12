@@ -21,8 +21,9 @@ import java.util.List;
 @RequestMapping("/student")
 @Tag(name = "Student Controller", description = "Endpoints for students")
 @RequiredArgsConstructor
-@Slf4j
 public class StudentController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StudentController.class);
 
     private final StudentService studentService;
     private final NotificationService notificationService;

@@ -32,11 +32,11 @@ public interface AttendanceService {
     AttendanceResponse recordManualAttendance(String studentEmail, LocalDate date, AttendanceStatus status, String facultyEmail);
 
     // Real Batch-Wise Attendance System APIs
-    AttendanceSession createAttendanceSession(AttendanceSessionRequest request, String creatorEmail);
+    com.mentormatrix.dto.response.AttendanceSessionResponse createAttendanceSession(AttendanceSessionRequest request, String creatorEmail);
 
-    AttendanceSession startAttendanceSession(Long sessionId);
+    com.mentormatrix.dto.response.AttendanceSessionResponse startAttendanceSession(Long sessionId);
 
-    AttendanceSession closeAttendanceSession(Long sessionId);
+    com.mentormatrix.dto.response.AttendanceSessionResponse closeAttendanceSession(Long sessionId);
 
     AttendanceResponse processQrScan(QrScanRequest request, String adminOrFacultyEmail);
 

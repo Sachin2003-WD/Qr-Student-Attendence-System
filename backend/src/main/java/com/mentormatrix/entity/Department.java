@@ -16,7 +16,6 @@ import lombok.experimental.SuperBuilder;
         @UniqueConstraint(name = "uk_departments_code", columnNames = "code"),
         @UniqueConstraint(name = "uk_departments_name", columnNames = "name")
 })
-@SuperBuilder
 @Getter
 @Setter
 @NoArgsConstructor
@@ -33,4 +32,39 @@ public class Department extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public static DepartmentBuilder builder() {
+        return new DepartmentBuilder();
+    }
+
+    public static class DepartmentBuilder {
+        private String name;
+        private String code;
+        private String description;
+        private Boolean active = true;
+        private Boolean deleted = false;
+
+        public DepartmentBuilder name(String name) { this.name = name; return this; }
+        public DepartmentBuilder code(String code) { this.code = code; return this; }
+        public DepartmentBuilder description(String description) { this.description = description; return this; }
+        public DepartmentBuilder active(Boolean active) { this.active = active; return this; }
+        public DepartmentBuilder deleted(Boolean deleted) { this.deleted = deleted; return this; }
+
+        public Department build() {
+            Department d = new Department();
+            d.setName(name);
+            d.setCode(code);
+            d.setDescription(description);
+            d.setActive(active != null ? active : true);
+            d.setDeleted(deleted != null ? deleted : false);
+            return d;
+        }
+    }
 }

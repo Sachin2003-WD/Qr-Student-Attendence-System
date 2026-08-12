@@ -25,9 +25,10 @@ import java.util.List;
 @RequestMapping("/admin")
 @Tag(name = "Admin Controller", description = "Endpoints for administrators")
 @RequiredArgsConstructor
-@Slf4j
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AdminController.class);
 
     private final AdminService adminService;
     private final StudentService studentService;

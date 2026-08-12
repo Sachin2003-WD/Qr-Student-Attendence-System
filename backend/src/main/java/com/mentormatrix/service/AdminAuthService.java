@@ -43,7 +43,7 @@ public class AdminAuthService {
     }
 
     @Transactional
-    public AuthResponse register(AdminRegistrationRequest request) {
+    public synchronized AuthResponse register(AdminRegistrationRequest request) {
         long adminCount = adminRepository.countByDeletedFalse();
         if (adminCount >= AppConstants.MAX_ADMIN_COUNT) {
             throw new MaxLimitReachedException("Maximum number of admins (" + AppConstants.MAX_ADMIN_COUNT + ") reached.");
