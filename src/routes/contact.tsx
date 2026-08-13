@@ -1,5 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { QrCode, Mail, Phone, MapPin, MessageSquare, Sparkles, CheckCircle2, ShieldCheck } from "lucide-react";
+import {
+  QrCode,
+  Mail,
+  Phone,
+  MapPin,
+  MessageSquare,
+  Sparkles,
+  CheckCircle2,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,9 +22,16 @@ export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
       { title: "Support & Helpdesk — Attendrix | Smart attendance tracking platform" },
-      { name: "description", content: "Get support, request demos, or report technical issues with the Attendrix platform team." },
+      {
+        name: "description",
+        content:
+          "Get support, request demos, or report technical issues with the Attendrix platform team.",
+      },
       { property: "og:title", content: "Support & Helpdesk — Attendrix" },
-      { property: "og:description", content: "Get in touch with the Attendrix platform team for technical support." },
+      {
+        property: "og:description",
+        content: "Get in touch with the Attendrix platform team for technical support.",
+      },
     ],
   }),
   component: Contact,
@@ -29,7 +45,9 @@ function Contact() {
     setSending(true);
     setTimeout(() => {
       setSending(false);
-      toast.success("Support request submitted successfully! Our team will respond within 24 hours.");
+      toast.success(
+        "Support request submitted successfully! Our team will respond within 24 hours.",
+      );
     }, 600);
   };
 
@@ -52,10 +70,20 @@ function Contact() {
             </div>
           </Link>
           <nav className="flex items-center gap-6 text-xs font-semibold text-muted-foreground">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-            <Link to="/about" className="hover:text-primary transition-colors">About</Link>
-            <Link to="/contact" className="text-primary font-bold">Support</Link>
-            <Link to="/login"><Button variant="ghost" size="sm" className="text-xs font-semibold">Sign In</Button></Link>
+            <Link to="/" className="hover:text-primary transition-colors">
+              Home
+            </Link>
+            <Link to="/about" className="hover:text-primary transition-colors">
+              About
+            </Link>
+            <Link to="/contact" className="text-primary font-bold">
+              Support
+            </Link>
+            <Link to="/login">
+              <Button variant="ghost" size="sm" className="text-xs font-semibold">
+                Sign In
+              </Button>
+            </Link>
           </nav>
         </div>
       </header>
@@ -63,14 +91,18 @@ function Contact() {
       {/* SUPPORT CONTENT */}
       <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6 flex-1 grid gap-10 lg:grid-cols-2 items-start">
         <div className="space-y-6">
-          <Badge variant="outline" className="gap-2 px-3 py-1 text-xs font-mono font-bold bg-primary/10 text-primary border-primary/20 rounded-full">
+          <Badge
+            variant="outline"
+            className="gap-2 px-3 py-1 text-xs font-mono font-bold bg-primary/10 text-primary border-primary/20 rounded-full"
+          >
             <Sparkles className="h-3.5 w-3.5 text-emerald-500" /> ATTENDRIX SUPPORT
           </Badge>
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl text-foreground leading-tight">
             How can we help your institution?
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Have questions about setting up dynamic QR attendance, configuring batch codes, or connecting your MySQL database? Our dedicated support team is here to assist.
+            Have questions about setting up dynamic QR attendance, configuring batch codes, or
+            connecting your MySQL database? Our dedicated support team is here to assist.
           </p>
 
           <div className="space-y-4 pt-4">
@@ -80,7 +112,7 @@ function Contact() {
               </div>
               <div className="space-y-0.5">
                 <p className="text-xs text-muted-foreground font-medium">Email Support</p>
-                <p className="text-sm font-bold font-mono text-foreground">support@attendrix.app</p>
+                <p className="text-sm font-bold font-mono text-foreground">cksachin94@gmail.com</p>
               </div>
             </Card>
 
@@ -89,8 +121,8 @@ function Contact() {
                 <Phone className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground font-medium">Phone Hotline</p>
-                <p className="text-sm font-bold font-mono text-foreground">+91 80 4567 8900</p>
+                <p className="text-xs text-muted-foreground font-medium">Phone Number</p>
+                <p className="text-sm font-bold font-mono text-foreground">+91 79 7577 8491</p>
               </div>
             </Card>
 
@@ -110,30 +142,42 @@ function Contact() {
         <Card className="border border-border/70 bg-card/60 p-6 sm:p-8 backdrop-blur-xl shadow-xl space-y-6">
           <div className="space-y-1">
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary" /> Submit a Support Ticket
+              <MessageSquare className="h-5 w-5 text-primary" /> Submit Your Request
             </h2>
-            <p className="text-xs text-muted-foreground">Fill out the form below and we will respond within 24 hours.</p>
+            <p className="text-xs text-muted-foreground">
+              Fill out the form below and we will respond within 24 hours.
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Your Name</Label>
-              <Input required placeholder="e.g. Laxman Handenavar" className="h-9 text-xs" />
+              <Input required placeholder="Enter Your Name" className="h-9 text-xs" />
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Email Address</Label>
-              <Input type="email" required placeholder="e.g. laxman@jspiders.com" className="h-9 text-xs font-mono" />
+              <Input
+                type="email"
+                required
+                placeholder="e.g. example@gmail.com"
+                className="h-9 text-xs font-mono"
+              />
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Subject / Category</Label>
-              <Input required placeholder="e.g. Dynamic QR Token Sync Query" className="h-9 text-xs" />
+              <Input required placeholder="Enter Your Query" className="h-9 text-xs" />
             </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Message Description</Label>
-              <Textarea required rows={4} placeholder="Provide details about your query or issue..." className="text-xs resize-none" />
+              <Textarea
+                required
+                rows={4}
+                placeholder="Provide details about your query or issue..."
+                className="text-xs resize-none"
+              />
             </div>
 
             <Button
@@ -152,12 +196,21 @@ function Contact() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6 font-mono">
           <div className="flex items-center gap-2">
             <QrCode className="h-4 w-4 text-primary" />
-            <span>© {new Date().getFullYear()} <strong>Attendrix</strong> — Smart attendance tracking platform.</span>
+            <span>
+              © {new Date().getFullYear()} <strong>Attendrix</strong> — Smart attendance tracking
+              platform.
+            </span>
           </div>
           <div className="flex gap-6">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-            <Link to="/about" className="hover:text-primary transition-colors">About</Link>
-            <Link to="/app/dashboard" className="hover:text-primary transition-colors">Dashboard</Link>
+            <Link to="/" className="hover:text-primary transition-colors">
+              Home
+            </Link>
+            <Link to="/about" className="hover:text-primary transition-colors">
+              About
+            </Link>
+            <Link to="/app/dashboard" className="hover:text-primary transition-colors">
+              Dashboard
+            </Link>
           </div>
         </div>
       </footer>

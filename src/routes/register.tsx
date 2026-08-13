@@ -7,7 +7,10 @@ export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
       { title: "Registration Portal — Smart Attendance System" },
-      { name: "description", content: "Choose Student Registration or Authorized Administrator Registration." },
+      {
+        name: "description",
+        content: "Choose Student Registration or Authorized Administrator Registration.",
+      },
     ],
   }),
   component: RegisterHub,
@@ -17,7 +20,7 @@ function RegisterHub() {
   return (
     <AuthShell
       title="Select Registration Portal"
-      subtitle="Separate registration forms for Students and Authorized Administrators."
+      subtitle="Registration forms for Students and Authorized Administrators."
       footer={
         <div>
           Already have an account?{" "}
@@ -63,13 +66,15 @@ function RegisterHub() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm text-foreground">Administrator Registration</h3>
+                    <h3 className="font-bold text-sm text-foreground">
+                      Administrator Registration
+                    </h3>
                     <span className="rounded-md bg-indigo-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
                       RESTRICTED ADMIN
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Requires Admin Security Code (ADMIN2026) to prevent unauthorized access
+                    Requires Admin Security Code to prevent unauthorized access
                   </p>
                 </div>
               </div>

@@ -5,7 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api-client";
-import { Clock, Calendar, BookOpen, Building2, User, Layers, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Clock,
+  Calendar,
+  BookOpen,
+  Building2,
+  User,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/timetable")({
@@ -19,17 +28,55 @@ export const Route = createFileRoute("/app/timetable")({
   component: TimetablePage,
 });
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
 const DAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
 
 const SUBJECT_COLORS = [
-  { bg: "bg-blue-500/15", border: "border-blue-500/40", text: "text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
-  { bg: "bg-emerald-500/15", border: "border-emerald-500/40", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
-  { bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-700 dark:text-violet-300", dot: "bg-violet-500" },
-  { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-700 dark:text-amber-300", dot: "bg-amber-500" },
-  { bg: "bg-rose-500/15", border: "border-rose-500/40", text: "text-rose-700 dark:text-rose-300", dot: "bg-rose-500" },
-  { bg: "bg-cyan-500/15", border: "border-cyan-500/40", text: "text-cyan-700 dark:text-cyan-300", dot: "bg-cyan-500" },
+  {
+    bg: "bg-blue-500/15",
+    border: "border-blue-500/40",
+    text: "text-blue-700 dark:text-blue-300",
+    dot: "bg-blue-500",
+  },
+  {
+    bg: "bg-emerald-500/15",
+    border: "border-emerald-500/40",
+    text: "text-emerald-700 dark:text-emerald-300",
+    dot: "bg-emerald-500",
+  },
+  {
+    bg: "bg-violet-500/15",
+    border: "border-violet-500/40",
+    text: "text-violet-700 dark:text-violet-300",
+    dot: "bg-violet-500",
+  },
+  {
+    bg: "bg-amber-500/15",
+    border: "border-amber-500/40",
+    text: "text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
+  },
+  {
+    bg: "bg-rose-500/15",
+    border: "border-rose-500/40",
+    text: "text-rose-700 dark:text-rose-300",
+    dot: "bg-rose-500",
+  },
+  {
+    bg: "bg-cyan-500/15",
+    border: "border-cyan-500/40",
+    text: "text-cyan-700 dark:text-cyan-300",
+    dot: "bg-cyan-500",
+  },
 ];
 
 function formatHour(hour: number): string {
@@ -122,8 +169,9 @@ function TimetablePage() {
           key={b.id || i}
           className={cn(
             "rounded-lg border p-2 transition-all hover:shadow-md cursor-default",
-            colors.bg, colors.border,
-            isCurrentSlot && "ring-2 ring-emerald-500/60 animate-pulse"
+            colors.bg,
+            colors.border,
+            isCurrentSlot && "ring-2 ring-emerald-500/60 animate-pulse",
           )}
         >
           <div className={cn("text-[11px] font-bold truncate", colors.text)}>{subject}</div>
@@ -200,7 +248,10 @@ function TimetablePage() {
                 key={d}
                 variant={selectedDay === i ? "default" : "ghost"}
                 size="sm"
-                className={cn("text-xs h-8 px-3", i === todayIdx && selectedDay !== i && "border border-primary/30")}
+                className={cn(
+                  "text-xs h-8 px-3",
+                  i === todayIdx && selectedDay !== i && "border border-primary/30",
+                )}
                 onClick={() => setSelectedDay(i)}
               >
                 {d}
@@ -222,7 +273,9 @@ function TimetablePage() {
       {loading ? (
         <Card className="border-border/60">
           <CardContent className="py-12 text-center">
-            <div className="text-xs text-muted-foreground animate-pulse">Loading timetable data...</div>
+            <div className="text-xs text-muted-foreground animate-pulse">
+              Loading timetable data...
+            </div>
           </CardContent>
         </Card>
       ) : batches.length === 0 ? (
@@ -259,7 +312,7 @@ function TimetablePage() {
                         "p-2.5 text-center border-r border-border/40 last:border-r-0",
                         i === todayIdx
                           ? "bg-primary/10 text-primary font-bold"
-                          : "bg-muted/20 text-muted-foreground"
+                          : "bg-muted/20 text-muted-foreground",
                       )}
                     >
                       <div className="text-xs font-bold">{DAY_SHORT[i]}</div>
@@ -274,11 +327,18 @@ function TimetablePage() {
 
                 {/* Time Slots */}
                 {HOURS.map((hour) => (
-                  <div key={hour} className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border/30 last:border-b-0">
-                    <div className={cn(
-                      "p-2 text-center text-[10px] font-mono font-semibold border-r border-border/40 flex items-start justify-center pt-3",
-                      hour === currentHour ? "text-primary bg-primary/5" : "text-muted-foreground bg-muted/10"
-                    )}>
+                  <div
+                    key={hour}
+                    className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-border/30 last:border-b-0"
+                  >
+                    <div
+                      className={cn(
+                        "p-2 text-center text-[10px] font-mono font-semibold border-r border-border/40 flex items-start justify-center pt-3",
+                        hour === currentHour
+                          ? "text-primary bg-primary/5"
+                          : "text-muted-foreground bg-muted/10",
+                      )}
+                    >
                       {formatHour(hour)}
                     </div>
                     {DAYS.map((_, dayIdx) => {
@@ -290,12 +350,10 @@ function TimetablePage() {
                             "p-1.5 min-h-[70px] border-r border-border/20 last:border-r-0 transition-colors",
                             dayIdx === todayIdx && "bg-primary/[0.03]",
                             hour === currentHour && dayIdx === todayIdx && "bg-primary/[0.06]",
-                            !content && "hover:bg-muted/20"
+                            !content && "hover:bg-muted/20",
                           )}
                         >
-                          {content ? (
-                            <div className="space-y-1">{content}</div>
-                          ) : null}
+                          {content ? <div className="space-y-1">{content}</div> : null}
                         </div>
                       );
                     })}
@@ -331,17 +389,20 @@ function TimetablePage() {
                       ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
                       : content
                         ? "border-border/60 bg-card hover:bg-muted/20"
-                        : "border-border/20 bg-transparent"
+                        : "border-border/20 bg-transparent",
                   )}
                 >
-                  <div className={cn(
-                    "w-20 shrink-0 text-xs font-mono font-bold pt-0.5",
-                    isCurrentHourSlot ? "text-primary" : "text-muted-foreground"
-                  )}>
+                  <div
+                    className={cn(
+                      "w-20 shrink-0 text-xs font-mono font-bold pt-0.5",
+                      isCurrentHourSlot ? "text-primary" : "text-muted-foreground",
+                    )}
+                  >
                     {formatHour(hour)}
                     {isCurrentHourSlot && (
                       <div className="text-[9px] text-emerald-500 font-semibold mt-0.5 flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> NOW
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />{" "}
+                        NOW
                       </div>
                     )}
                   </div>

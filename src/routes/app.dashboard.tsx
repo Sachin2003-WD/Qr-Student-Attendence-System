@@ -1,8 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  CalendarCheck, TrendingUp, CheckCircle2, QrCode, Users,
-  AlertCircle, RefreshCw, FileText, BookOpen, Clock, Layers
+  CalendarCheck,
+  TrendingUp,
+  CheckCircle2,
+  QrCode,
+  Users,
+  AlertCircle,
+  RefreshCw,
+  FileText,
+  BookOpen,
+  Clock,
+  Layers,
 } from "lucide-react";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { PageHeader } from "@/components/page-header";
@@ -10,11 +19,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useApp } from "@/lib/app-context";
 import {
-  api, TODAY_SUBJECT_SESSIONS, getRealtimeSubjectSessions, type AttendanceResponse,
-  type AttendanceSummaryResponse, type QRCodeResponse
+  api,
+  TODAY_SUBJECT_SESSIONS,
+  getRealtimeSubjectSessions,
+  type AttendanceResponse,
+  type AttendanceSummaryResponse,
+  type QRCodeResponse,
 } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -94,7 +114,10 @@ function StudentLiveDash() {
   useEffect(() => {
     loadStudentData();
     const interval = setInterval(() => {
-      api.getMyAttendanceSummary().then((s) => setSummary(s)).catch(() => {});
+      api
+        .getMyAttendanceSummary()
+        .then((s) => setSummary(s))
+        .catch(() => {});
     }, 3000);
 
     return () => clearInterval(interval);
@@ -103,10 +126,13 @@ function StudentLiveDash() {
   // 120-second (2 minutes) dynamic QR auto-rotation timer
   useEffect(() => {
     if (secondsLeft <= 0) {
-      api.getDynamicStudentQRCode().then((qr) => {
-        setQrData(qr);
-        setSecondsLeft(120);
-      }).catch(() => {});
+      api
+        .getDynamicStudentQRCode()
+        .then((qr) => {
+          setQrData(qr);
+          setSecondsLeft(120);
+        })
+        .catch(() => {});
       return;
     }
     const timer = setInterval(() => setSecondsLeft((prev) => prev - 1), 1000);
@@ -121,9 +147,24 @@ function StudentLiveDash() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Sessions" value={summary?.totalDays ?? 0} icon={CalendarCheck} />
-        <StatCard label="Present Count" value={summary?.presentCount ?? 0} icon={CheckCircle2} accent="chart-2" />
-        <StatCard label="Absent Count" value={summary?.absentCount ?? 0} icon={AlertCircle} accent="chart-4" />
-        <StatCard label="Attendance %" value={`${(summary?.attendancePercentage ?? 0).toFixed(1)}%`} icon={TrendingUp} accent="chart-3" />
+        <StatCard
+          label="Present Count"
+          value={summary?.presentCount ?? 0}
+          icon={CheckCircle2}
+          accent="chart-2"
+        />
+        <StatCard
+          label="Absent Count"
+          value={summary?.absentCount ?? 0}
+          icon={AlertCircle}
+          accent="chart-4"
+        />
+        <StatCard
+          label="Attendance %"
+          value={`${(summary?.attendancePercentage ?? 0).toFixed(1)}%`}
+          icon={TrendingUp}
+          accent="chart-3"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -134,8 +175,11 @@ function StudentLiveDash() {
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" /> Today's Subject Sessions (Realtime)
               </CardTitle>
-              <Badge variant="outline" className="text-[10px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                Live Realtime
+              <Badge
+                variant="outline"
+                className="text-[10px] font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+              >
+                Live
               </Badge>
             </div>
           </CardHeader>
@@ -152,12 +196,17 @@ function StudentLiveDash() {
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-bold text-foreground">{s.name}</span>
-                  <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
+                  <Badge
+                    variant="outline"
+                    className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20"
+                  >
                     {s.code}
                   </Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1 font-mono font-medium"><Clock className="h-3.5 w-3.5 text-primary" /> {s.time}</span>
+                  <span className="flex items-center gap-1 font-mono font-medium">
+                    <Clock className="h-3.5 w-3.5 text-primary" /> {s.time}
+                  </span>
                   <span>• {s.faculty}</span>
                   <span>• {s.room}</span>
                 </div>
@@ -179,16 +228,26 @@ function StudentLiveDash() {
           <CardContent className="pt-4 flex flex-col items-center text-center space-y-3">
             {qrData?.qrCodeBase64 ? (
               <div className="rounded-2xl border bg-white p-4 shadow-md border-primary/20">
-                <img src={qrData.qrCodeBase64} alt="Student Dynamic QR" className="h-52 w-52 object-contain" />
+                <img
+                  src={qrData.qrCodeBase64}
+                  alt="Student Dynamic QR"
+                  className="h-52 w-52 object-contain"
+                />
               </div>
             ) : (
-              <div className="grid h-52 w-52 place-items-center rounded-2xl border bg-card text-xs">Loading Live QR...</div>
+              <div className="grid h-52 w-52 place-items-center rounded-2xl border bg-card text-xs">
+                Loading Live QR...
+              </div>
             )}
             <span className="text-xs font-mono font-bold bg-background px-3.5 py-1.5 rounded-md border border-border text-foreground shadow-xs">
               {qrData?.token || "Generating..."}
             </span>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
-              <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes automatically in <strong>{minutesDisplay}m {secondsDisplay}s</strong>
+              <Clock className="h-3.5 w-3.5 text-primary animate-spin" /> Dynamic token refreshes
+              automatically in{" "}
+              <strong>
+                {minutesDisplay}m {secondsDisplay}s
+              </strong>
             </p>
             <Link to="/app/attendance" className="w-full pt-1">
               <Button size="sm" className="w-full text-xs font-bold gap-2">
@@ -209,7 +268,9 @@ function StudentLiveDash() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">Loading...</div>
+            <div className="py-8 text-center text-xs text-muted-foreground animate-pulse">
+              Loading...
+            </div>
           ) : summary?.records && summary.records.length > 0 ? (
             <div className="w-full overflow-x-auto">
               <Table className="min-w-[500px]">
@@ -225,14 +286,20 @@ function StudentLiveDash() {
                   {summary.records.slice(0, 8).map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="text-xs font-mono">{r.date}</TableCell>
-                      <TableCell className="text-xs font-medium">{r.subjectCode || "—"} - {r.subjectName || "—"}</TableCell>
+                      <TableCell className="text-xs font-medium">
+                        {r.subjectCode || "—"} - {r.subjectName || "—"}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono">
                         {r.markedAt ? new Date(r.markedAt).toLocaleTimeString() : "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`text-[10px] font-bold ${
-                          r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-                        }`}>
+                        <Badge
+                          className={`text-[10px] font-bold ${
+                            r.status === "PRESENT"
+                              ? "bg-emerald-600 text-white"
+                              : "bg-rose-600 text-white"
+                          }`}
+                        >
                           {r.status}
                         </Badge>
                       </TableCell>
@@ -245,7 +312,9 @@ function StudentLiveDash() {
             <div className="rounded-xl border border-dashed p-8 text-center">
               <QrCode className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <div className="mt-2 text-sm font-medium">No Attendance Recorded Yet</div>
-              <p className="mt-1 text-xs text-muted-foreground">Scan a session QR code or use the token entry above.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Scan a session QR code or use the token entry above.
+              </p>
             </div>
           )}
         </CardContent>
@@ -283,7 +352,8 @@ function AdminLiveDash() {
   };
 
   const presentCount = records.filter((r) => r.status === "PRESENT").length;
-  const overallPct = records.length > 0 ? ((presentCount / records.length) * 100).toFixed(1) : "0.0";
+  const overallPct =
+    records.length > 0 ? ((presentCount / records.length) * 100).toFixed(1) : "0.0";
 
   return (
     <div className="space-y-6">
@@ -291,8 +361,18 @@ function AdminLiveDash() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Batches Created" value={batches.length} icon={Layers} />
         <StatCard label="Attendance Logs" value={records.length} icon={Users} accent="chart-2" />
-        <StatCard label="Active Sessions" value={TODAY_SUBJECT_SESSIONS.length} icon={BookOpen} accent="chart-3" />
-        <StatCard label="Overall Present %" value={`${overallPct}%`} icon={TrendingUp} accent="chart-4" />
+        <StatCard
+          label="Active Sessions"
+          value={TODAY_SUBJECT_SESSIONS.length}
+          icon={BookOpen}
+          accent="chart-3"
+        />
+        <StatCard
+          label="Overall Present %"
+          value={`${overallPct}%`}
+          icon={TrendingUp}
+          accent="chart-4"
+        />
       </div>
 
       {/* Quick Actions */}
@@ -305,7 +385,9 @@ function AdminLiveDash() {
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-bold truncate">Manage Batches</div>
-                <div className="text-xs text-muted-foreground truncate">Create & configure batch codes</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  Create & configure batch codes
+                </div>
               </div>
             </div>
           </Card>
@@ -318,7 +400,9 @@ function AdminLiveDash() {
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-bold truncate">Attendance Scanner</div>
-                <div className="text-xs text-muted-foreground truncate">QR scanner & session control</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  QR scanner & session control
+                </div>
               </div>
             </div>
           </Card>
@@ -331,7 +415,9 @@ function AdminLiveDash() {
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-bold truncate">Calendar View</div>
-                <div className="text-xs text-muted-foreground truncate">Date-wise attendance report</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  Date-wise attendance report
+                </div>
               </div>
             </div>
           </Card>
@@ -350,20 +436,36 @@ function AdminLiveDash() {
         </CardHeader>
         <CardContent>
           {loadingBatches ? (
-            <div className="py-6 text-center text-xs text-muted-foreground animate-pulse">Loading batches...</div>
+            <div className="py-6 text-center text-xs text-muted-foreground animate-pulse">
+              Loading batches...
+            </div>
           ) : batches.length > 0 ? (
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {batches.slice(0, 6).map((b: any, idx: number) => (
-                <div key={b.id || idx} className="rounded-xl border border-border/60 p-3.5 space-y-2 hover:border-primary/40 transition-all">
+                <div
+                  key={b.id || idx}
+                  className="rounded-xl border border-border/60 p-3.5 space-y-2 hover:border-primary/40 transition-all"
+                >
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20 break-all">
+                    <Badge
+                      variant="outline"
+                      className="font-mono text-[10px] font-bold bg-primary/10 text-primary border-primary/20 break-all"
+                    >
                       {b.batchCode || b.name}
                     </Badge>
-                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-none shrink-0">ACTIVE</Badge>
+                    <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-none shrink-0">
+                      ACTIVE
+                    </Badge>
                   </div>
-                  <div className="text-xs font-semibold break-words">{b.subjectName || "Subject"}</div>
-                  <div className="text-[11px] text-muted-foreground break-words">{b.branch || "Branch"} • {b.trainerName || "Trainer"}</div>
-                  <div className="text-[11px] text-muted-foreground font-mono">{b.classTiming || "—"} • {b.startDate || "—"}</div>
+                  <div className="text-xs font-semibold break-words">
+                    {b.subjectName || "Subject"}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground break-words">
+                    {b.branch || "Branch"} • {b.trainerName || "Trainer"}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground font-mono">
+                    {b.classTiming || "—"} • {b.startDate || "—"}
+                  </div>
                 </div>
               ))}
             </div>
@@ -371,9 +473,13 @@ function AdminLiveDash() {
             <div className="rounded-xl border border-dashed p-8 text-center space-y-2">
               <Layers className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <div className="text-sm font-medium">No Batches Created Yet</div>
-              <p className="text-xs text-muted-foreground">Go to Batches section to create your first batch code.</p>
+              <p className="text-xs text-muted-foreground">
+                Go to Batches section to create your first batch code.
+              </p>
               <Link to="/app/batches">
-                <Button size="sm" className="text-xs font-semibold mt-2">Create First Batch</Button>
+                <Button size="sm" className="text-xs font-semibold mt-2">
+                  Create First Batch
+                </Button>
               </Link>
             </div>
           )}
@@ -400,13 +506,23 @@ function AdminLiveDash() {
                 <TableBody>
                   {records.slice(0, 10).map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell className="text-xs font-medium">{r.userName || r.userEmail}</TableCell>
+                      <TableCell className="text-xs font-medium">
+                        {r.userName || r.userEmail}
+                      </TableCell>
                       <TableCell className="text-xs font-mono">{r.subjectCode || "—"}</TableCell>
                       <TableCell className="text-xs text-muted-foreground font-mono">
-                        {r.date} {r.markedAt ? new Date(r.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                        {r.date}{" "}
+                        {r.markedAt
+                          ? new Date(r.markedAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`text-[10px] font-bold ${r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
+                        <Badge
+                          className={`text-[10px] font-bold ${r.status === "PRESENT" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}
+                        >
                           {r.status}
                         </Badge>
                       </TableCell>

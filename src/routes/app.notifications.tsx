@@ -6,7 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Bell, CheckCheck, Send, User, Users, ShieldAlert, Clock, Sparkles, MessageSquare } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  Send,
+  User,
+  Users,
+  ShieldAlert,
+  Clock,
+  Sparkles,
+  MessageSquare,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useApp } from "@/lib/app-context";
@@ -16,7 +26,10 @@ export const Route = createFileRoute("/app/notifications")({
   head: () => ({
     meta: [
       { title: "Notifications & Messaging — Attendrix" },
-      { name: "description", content: "Official system notifications, alerts, and administrator broadcasts." },
+      {
+        name: "description",
+        content: "Official system notifications, alerts, and administrator broadcasts.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -179,7 +192,9 @@ function NotificationsPage() {
       n.recipient === "ALL_STUDENTS" ||
       n.recipient === currentUserEmail ||
       (currentUserEmail && n.recipient.toLowerCase() === currentUserEmail.toLowerCase()) ||
-      (currentUserName && n.recipientName && n.recipientName.toLowerCase() === currentUserName.toLowerCase())
+      (currentUserName &&
+        n.recipientName &&
+        n.recipientName.toLowerCase() === currentUserName.toLowerCase())
     );
   });
 
@@ -193,7 +208,12 @@ function NotificationsPage() {
             : "Official announcements, batch updates, and session notifications from Administrator."
         }
         actions={
-          <Button variant="outline" size="sm" onClick={handleMarkAllRead} className="gap-1.5 text-xs font-semibold">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkAllRead}
+            className="gap-1.5 text-xs font-semibold"
+          >
             <CheckCheck className="h-4 w-4 text-emerald-600" /> Mark All as Read
           </Button>
         }
@@ -208,7 +228,7 @@ function NotificationsPage() {
                 <Send className="h-5 w-5" /> Send Announcement / Message to Students
               </CardTitle>
               <CardDescription className="text-xs">
-                Administrators can broadcast messages to all enrolled students or target an individual student.
+                Administrators can send messages to all students or a specific student.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
@@ -216,7 +236,9 @@ function NotificationsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {/* Recipient Scope Selector */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Recipient Scope</label>
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Recipient Scope
+                    </label>
                     <select
                       value={recipientType}
                       onChange={(e) => setRecipientType(e.target.value as "ALL" | "INDIVIDUAL")}
@@ -230,7 +252,9 @@ function NotificationsPage() {
                   {/* Individual Student Selector */}
                   {recipientType === "INDIVIDUAL" && (
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground">Select Student</label>
+                      <label className="text-xs font-semibold text-muted-foreground">
+                        Select Student
+                      </label>
                       <select
                         value={selectedStudentEmail}
                         onChange={(e) => setSelectedStudentEmail(e.target.value)}
@@ -251,10 +275,14 @@ function NotificationsPage() {
 
                   {/* Priority Selector */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Priority Level</label>
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Priority Level
+                    </label>
                     <select
                       value={priority}
-                      onChange={(e) => setPriority(e.target.value as "normal" | "important" | "high")}
+                      onChange={(e) =>
+                        setPriority(e.target.value as "normal" | "important" | "high")
+                      }
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-semibold shadow-xs focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       <option value="normal">Normal Announcement</option>
@@ -265,9 +293,11 @@ function NotificationsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Notification Title</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Notification Title
+                  </label>
                   <Input
-                    placeholder="Enter announcement subject (e.g. Lab Session Timing Rescheduled)..."
+                    placeholder="Enter announcement subject"
                     value={titleInput}
                     onChange={(e) => setTitleInput(e.target.value)}
                     className="h-9 text-xs font-medium"
@@ -275,7 +305,9 @@ function NotificationsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Message Content</label>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Message Content
+                  </label>
                   <Textarea
                     placeholder="Type official notification message to be dispatched to students..."
                     value={bodyInput}
@@ -284,8 +316,13 @@ function NotificationsPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={sending} className="w-full sm:w-auto text-xs font-bold gap-2 h-9 px-6 bg-primary hover:bg-primary/90">
-                  <Send className="h-4 w-4" /> {sending ? "Dispatching..." : "Dispatch Notification Now"}
+                <Button
+                  type="submit"
+                  disabled={sending}
+                  className="w-full sm:w-auto text-xs font-bold gap-2 h-9 px-6 bg-primary hover:bg-primary/90"
+                >
+                  <Send className="h-4 w-4" />{" "}
+                  {sending ? "Dispatching..." : "Dispatch Notification Now"}
                 </Button>
               </form>
             </CardContent>
@@ -298,7 +335,8 @@ function NotificationsPage() {
             <CardContent className="flex items-center gap-3 p-3.5 text-xs text-muted-foreground">
               <ShieldAlert className="h-5 w-5 text-primary shrink-0" />
               <span>
-                Notifications view is <strong>Read-Only for Students</strong>. Official announcements are broadcasted directly by Administrators and Faculty Leads.
+                Notifications view is <strong>Read-Only for Students</strong>. Official
+                announcements are broadcasted directly by Administrators and Faculty Leads.
               </span>
             </CardContent>
           </Card>
@@ -308,7 +346,8 @@ function NotificationsPage() {
         <div className="space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <Bell className="h-4 w-4 text-primary" /> Received Notifications ({visibleNotifications.length})
+              <Bell className="h-4 w-4 text-primary" /> Received Notifications (
+              {visibleNotifications.length})
             </span>
             <Badge variant="outline" className="text-[10px] font-mono">
               Auto-Synced
@@ -321,17 +360,21 @@ function NotificationsPage() {
                 key={n.id}
                 className={cn(
                   "transition-all border-border/60 shadow-xs",
-                  !n.read && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20"
+                  !n.read && "border-primary/40 bg-primary/[0.04] ring-1 ring-primary/20",
                 )}
               >
                 <CardContent className="flex items-start gap-3.5 p-4">
                   <div
                     className={cn(
                       "mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl font-bold text-xs",
-                      !n.read ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                      !n.read ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {n.recipient === "ALL_STUDENTS" ? <Users className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                    {n.recipient === "ALL_STUDENTS" ? (
+                      <Users className="h-5 w-5" />
+                    ) : (
+                      <User className="h-5 w-5" />
+                    )}
                   </div>
 
                   <div className="min-w-0 flex-1 space-y-1">
@@ -339,10 +382,14 @@ function NotificationsPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-foreground">{n.title}</span>
                         {n.priority === "high" && (
-                          <Badge className="bg-rose-600 text-white font-bold text-[9px]">Urgent</Badge>
+                          <Badge className="bg-rose-600 text-white font-bold text-[9px]">
+                            Urgent
+                          </Badge>
                         )}
                         {n.priority === "important" && (
-                          <Badge className="bg-amber-600 text-white font-bold text-[9px]">Important</Badge>
+                          <Badge className="bg-amber-600 text-white font-bold text-[9px]">
+                            Important
+                          </Badge>
                         )}
                       </div>
 
@@ -363,7 +410,9 @@ function NotificationsPage() {
                     </div>
                   </div>
 
-                  {!n.read && <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary animate-pulse" />}
+                  {!n.read && (
+                    <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary animate-pulse" />
+                  )}
                 </CardContent>
               </Card>
             ))
@@ -372,7 +421,9 @@ function NotificationsPage() {
               <CardContent className="py-12 text-center text-xs text-muted-foreground space-y-2">
                 <Bell className="h-8 w-8 mx-auto text-muted-foreground/40" />
                 <p className="font-bold">No Notifications Received Yet</p>
-                <p className="text-[11px]">Official system alerts and administrator announcements will appear here.</p>
+                <p className="text-[11px]">
+                  Official system alerts and administrator announcements will appear here.
+                </p>
               </CardContent>
             </Card>
           )}

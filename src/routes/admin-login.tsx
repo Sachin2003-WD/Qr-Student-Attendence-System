@@ -64,14 +64,17 @@ function AdminLoginPage() {
           </div>
           <span className="text-xl font-bold">Admin Control Portal</span>
         </Link>
-        
+
         <div className="max-w-md space-y-4">
           <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold backdrop-blur border border-white/20">
             <Sparkles className="h-3.5 w-3.5" /> Institution Administrator Access
           </div>
-          <h2 className="text-4xl font-extrabold leading-tight">System Control & Batch Analytics</h2>
+          <h2 className="text-4xl font-extrabold leading-tight">
+            System Control & Batch Analytics
+          </h2>
           <p className="text-indigo-100/90 text-sm leading-relaxed">
-            Manage attendance batches, view system-wide logs, generate calendar reports, and configure classroom session engines.
+            Manage attendance batches, view system-wide logs, generate calendar reports, and
+            configure classroom session engines.
           </p>
         </div>
 
@@ -84,7 +87,10 @@ function AdminLoginPage() {
       <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <div className="mx-auto w-full max-w-md space-y-6">
           <div className="flex items-center justify-between">
-            <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground"
+            >
               <ArrowLeft className="h-4 w-4" /> Back to Home
             </Link>
             <span className="rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
@@ -107,22 +113,30 @@ function AdminLoginPage() {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4 text-left">
                 <div className="space-y-2">
-                  <Label htmlFor="a-email" className="text-xs font-semibold">Administrator Email Address</Label>
+                  <Label htmlFor="a-email" className="text-xs font-semibold">
+                    Administrator Email Address
+                  </Label>
                   <Input
                     id="a-email"
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. admin@college.edu"
+                    placeholder="Enter your admin email"
                     className="h-10 text-xs"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="a-pass" className="text-xs font-semibold">Password</Label>
-                    <Link to="/forgot-password" search={{ role: "admin" }} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                    <Label htmlFor="a-pass" className="text-xs font-semibold">
+                      Password
+                    </Label>
+                    <Link
+                      to="/forgot-password"
+                      search={{ role: "admin" }}
+                      className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+                    >
                       Forgot Password?
                     </Link>
                   </div>
@@ -138,7 +152,11 @@ function AdminLoginPage() {
                   />
                 </div>
 
-                <Button type="submit" className="w-full h-10 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white gap-2 mt-2" disabled={loading}>
+                <Button
+                  type="submit"
+                  className="w-full h-10 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white gap-2 mt-2"
+                  disabled={loading}
+                >
                   <KeyRound className="h-4 w-4" />
                   {loading ? "Authenticating Admin…" : "Sign In to Admin Control Panel"}
                 </Button>
@@ -149,13 +167,19 @@ function AdminLoginPage() {
           <div className="text-center text-xs text-muted-foreground space-y-2">
             <div>
               Authorized administrator account creation:{" "}
-              <Link to="/admin-register" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              <Link
+                to="/admin-register"
+                className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
                 Register Admin Account
               </Link>
             </div>
             <div className="pt-2 border-t text-[11px]">
               Are you a Student?{" "}
-              <Link to="/student-login" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+              <Link
+                to="/student-login"
+                className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
                 Go to Student Login Page
               </Link>
             </div>

@@ -58,7 +58,7 @@ function AdminRegister() {
     const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!passRegex.test(formData.password)) {
       toast.error(
-        "Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 digit, and 1 special character (e.g. Password@123)."
+        "Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 digit, and 1 special character (e.g. Password@123).",
       );
       return;
     }
@@ -115,25 +115,31 @@ function AdminRegister() {
           <ShieldCheck className="h-4 w-4 text-chart-2" />
           <span>Administrator Registration Portal</span>
         </div>
-        <span className="rounded-md bg-chart-2/15 px-2 py-0.5 font-mono text-[10px] font-bold text-chart-2">ADMIN</span>
+        <span className="rounded-md bg-chart-2/15 px-2 py-0.5 font-mono text-[10px] font-bold text-chart-2">
+          ADMIN
+        </span>
       </div>
 
       <form className="space-y-4 text-left" onSubmit={handleSubmit}>
         <div className="grid gap-2">
-          <Label htmlFor="name" className="text-xs font-semibold">Administrator Full Name</Label>
+          <Label htmlFor="name" className="text-xs font-semibold">
+            Administrator Full Name
+          </Label>
           <Input
             id="name"
             required
             value={formData.name}
             onChange={(e) => updateField("name", e.target.value)}
-            placeholder="Dr. Admin Smith"
+            placeholder="Enter Your Name"
             className="h-10 text-xs"
           />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="email" className="text-xs font-semibold">Official Email Address</Label>
+            <Label htmlFor="email" className="text-xs font-semibold">
+              Official Email Address
+            </Label>
             <Input
               id="email"
               type="email"
@@ -146,7 +152,9 @@ function AdminRegister() {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="phone" className="text-xs font-semibold">Mobile Phone (10 digits)</Label>
+            <Label htmlFor="phone" className="text-xs font-semibold">
+              Mobile Phone
+            </Label>
             <Input
               id="phone"
               required
@@ -161,7 +169,9 @@ function AdminRegister() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="pass" className="text-xs font-semibold">Password</Label>
+            <Label htmlFor="pass" className="text-xs font-semibold">
+              Password
+            </Label>
             <Input
               id="pass"
               type="password"
@@ -174,7 +184,9 @@ function AdminRegister() {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="cpass" className="text-xs font-semibold">Confirm Password</Label>
+            <Label htmlFor="cpass" className="text-xs font-semibold">
+              Confirm Password
+            </Label>
             <Input
               id="cpass"
               type="password"
@@ -187,7 +199,11 @@ function AdminRegister() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full text-xs font-semibold h-10 gap-2 mt-2" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full text-xs font-semibold h-10 gap-2 mt-2"
+          disabled={loading}
+        >
           <UserPlus className="h-4 w-4" />
           {loading ? "Creating Admin Account…" : "Register Administrator Account"}
         </Button>

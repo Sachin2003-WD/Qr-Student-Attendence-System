@@ -4,7 +4,13 @@ import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api-client";
 import { useApp } from "@/lib/app-context";
 import { toast } from "sonner";
@@ -71,7 +77,7 @@ function StudentRegister() {
     const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!passRegex.test(formData.password)) {
       toast.error(
-        "Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 digit, and 1 special character (e.g. Password@123)."
+        "Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 digit, and 1 special character (e.g. Password@123).",
       );
       return;
     }
@@ -135,30 +141,36 @@ function StudentRegister() {
           <GraduationCap className="h-4 w-4 text-primary" />
           <span>Student Account Portal</span>
         </div>
-        <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">STUDENT</span>
+        <span className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+          STUDENT
+        </span>
       </div>
 
       <form className="space-y-3 text-left" onSubmit={handleSubmit}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="name" className="text-xs font-semibold">Full Name</Label>
+            <Label htmlFor="name" className="text-xs font-semibold">
+              Full Name
+            </Label>
             <Input
               id="name"
               required
               value={formData.name}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="John Doe"
+              placeholder="Enter Your Full Name"
               className="h-9 text-xs"
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="usn" className="text-xs font-semibold">USN / Roll No.</Label>
+            <Label htmlFor="usn" className="text-xs font-semibold">
+              USN / Roll No.
+            </Label>
             <Input
               id="usn"
               required
               value={formData.usn}
               onChange={(e) => updateField("usn", e.target.value)}
-              placeholder="e.g. 1MS21CS001"
+              placeholder="e.g. 1XX21CS001"
               className="h-9 text-xs font-mono"
             />
           </div>
@@ -166,7 +178,9 @@ function StudentRegister() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="email" className="text-xs font-semibold">Email Address</Label>
+            <Label htmlFor="email" className="text-xs font-semibold">
+              Email Address
+            </Label>
             <Input
               id="email"
               type="email"
@@ -178,7 +192,9 @@ function StudentRegister() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="phone" className="text-xs font-semibold">Mobile Phone (10 digits)</Label>
+            <Label htmlFor="phone" className="text-xs font-semibold">
+              Mobile Phone (10 digits)
+            </Label>
             <Input
               id="phone"
               required
@@ -194,7 +210,10 @@ function StudentRegister() {
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="grid gap-1.5">
             <Label className="text-xs font-semibold">Department</Label>
-            <Select value={formData.department} onValueChange={(val) => updateField("department", val)}>
+            <Select
+              value={formData.department}
+              onValueChange={(val) => updateField("department", val)}
+            >
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -209,13 +228,18 @@ function StudentRegister() {
 
           <div className="grid gap-1.5">
             <Label className="text-xs font-semibold">Semester</Label>
-            <Select value={String(formData.semester)} onValueChange={(val) => updateField("semester", Number(val))}>
+            <Select
+              value={String(formData.semester)}
+              onValueChange={(val) => updateField("semester", Number(val))}
+            >
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                  <SelectItem key={s} value={String(s)}>Sem {s}</SelectItem>
+                  <SelectItem key={s} value={String(s)}>
+                    Sem {s}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -250,7 +274,9 @@ function StudentRegister() {
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="dob" className="text-xs font-semibold">Date of Birth</Label>
+            <Label htmlFor="dob" className="text-xs font-semibold">
+              Date of Birth
+            </Label>
             <Input
               id="dob"
               type="date"
@@ -264,7 +290,9 @@ function StudentRegister() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="pass" className="text-xs font-semibold">Password</Label>
+            <Label htmlFor="pass" className="text-xs font-semibold">
+              Password
+            </Label>
             <Input
               id="pass"
               type="password"
@@ -277,7 +305,9 @@ function StudentRegister() {
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="cpass" className="text-xs font-semibold">Confirm Password</Label>
+            <Label htmlFor="cpass" className="text-xs font-semibold">
+              Confirm Password
+            </Label>
             <Input
               id="cpass"
               type="password"
@@ -290,7 +320,11 @@ function StudentRegister() {
           </div>
         </div>
 
-        <Button type="submit" className="w-full text-xs font-semibold h-10 gap-2 mt-3" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full text-xs font-semibold h-10 gap-2 mt-3"
+          disabled={loading}
+        >
           <UserPlus className="h-4 w-4" />
           {loading ? "Creating Account…" : "Register Student Account"}
         </Button>
