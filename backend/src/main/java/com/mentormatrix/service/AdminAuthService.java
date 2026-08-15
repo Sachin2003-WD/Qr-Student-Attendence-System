@@ -49,17 +49,20 @@ public class AdminAuthService {
             throw new MaxLimitReachedException("Maximum number of admins (" + AppConstants.MAX_ADMIN_COUNT + ") reached.");
         }
 
-        if (userRepository.existsByEmailAndDeletedFalse(request.getEmail()) || adminRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        String cleanPhone = request.getPhone().trim();
+
+        if (userRepository.existsByEmailAndDeletedFalse(cleanEmail) || adminRepository.existsByEmailAndDeletedFalse(cleanEmail)) {
             throw new DuplicateResourceException("Email is already registered");
         }
-        if (userRepository.existsByPhoneAndDeletedFalse(request.getPhone()) || adminRepository.existsByPhoneAndDeletedFalse(request.getPhone())) {
+        if (userRepository.existsByPhoneAndDeletedFalse(cleanPhone) || adminRepository.existsByPhoneAndDeletedFalse(cleanPhone)) {
             throw new DuplicateResourceException("Phone number is already registered");
         }
 
         com.mentormatrix.entity.User user = com.mentormatrix.entity.User.builder()
                 .name(request.getName())
-                .email(request.getEmail())
-                .phone(request.getPhone())
+                .email(cleanEmail)
+                .phone(cleanPhone)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(com.mentormatrix.enums.UserRole.ADMIN)
                 .active(true)
@@ -98,26 +101,36 @@ public class AdminAuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        Admin admin = adminRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
+        String cleanEmail = request.getEmail().trim().toLowerCase();
 
-        if (!admin.getActive()) {
-            throw new UnauthorizedException("Account is disabled");
-        }
+        Admin admin = adminRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        com.mentormatrix.entity.User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
 
-        if (!passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
+        if (admin == null && user == null) {
             throw new UnauthorizedException("Invalid email or password");
         }
 
-        String accessToken = jwtUtil.generateAccessToken(admin.getEmail(), "ADMIN");
-        String refreshToken = refreshTokenService.createRefreshToken(admin.getEmail(), "ADMIN").getToken();
+        String passwordHash = admin != null && admin.getPassword() != null ? admin.getPassword() : (user != null ? user.getPassword() : null);
+        String name = admin != null && admin.getName() != null ? admin.getName() : (user != null ? user.getName() : "Admin");
+        Boolean active = admin != null && admin.getActive() != null ? admin.getActive() : (user != null ? user.getActive() : true);
+
+        if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
+            throw new UnauthorizedException("Invalid email or password");
+        }
+
+        if (!Boolean.TRUE.equals(active)) {
+            throw new UnauthorizedException("Account is disabled");
+        }
+
+        String accessToken = jwtUtil.generateAccessToken(cleanEmail, "ADMIN");
+        String refreshToken = refreshTokenService.createRefreshToken(cleanEmail, "ADMIN").getToken();
 
         AuthResponse authResponse = new AuthResponse();
         authResponse.setAccessToken(accessToken);
         authResponse.setRefreshToken(refreshToken);
         authResponse.setTokenType("Bearer ");
-        authResponse.setEmail(admin.getEmail());
-        authResponse.setName(admin.getName());
+        authResponse.setEmail(cleanEmail);
+        authResponse.setName(name);
         authResponse.setRole("ADMIN");
         authResponse.setExpiresIn(jwtUtil.getAccessTokenExpirationMs());
 

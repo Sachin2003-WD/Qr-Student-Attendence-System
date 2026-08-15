@@ -78,38 +78,38 @@ class BatchAttendanceTest {
     @BeforeEach
     void setUp() {
         batch = Batch.builder()
-                .id(1L)
-                .name("JRA-GROGRD-E532")
-                .batchCode("JRA-GROGRD-E532")
-                .branch("Rajajinagar Jspiders")
-                .subjectName("Grooming")
-                .trainerName("Laxman Ashok Handenavar")
-                .classTiming("04:45 PM")
-                .startDate(LocalDate.of(2026, 6, 24))
+                .name("CSE-2026-A")
+                .batchCode("CSE-2026-A")
+                .branch("Main Campus")
+                .subjectName("Data Structures & Algorithms")
+                .trainerName("Faculty Trainer")
+                .classTiming("09:00 AM")
+                .startDate(LocalDate.of(2026, 8, 1))
                 .build();
+        batch.setId(1L);
 
         student = Student.builder()
-                .id(100L)
                 .studentId("STU1024")
                 .batch(batch)
                 .status(com.mentormatrix.enums.StudentStatus.ACTIVE)
                 .active(true)
                 .build();
+        student.setId(100L);
 
         session = AttendanceSession.builder()
-                .id(50L)
                 .batch(batch)
                 .sessionDate(LocalDate.now())
                 .status(AttendanceSessionStatus.ACTIVE)
                 .build();
+        session.setId(50L);
 
         validQrCode = DailyQRCode.builder()
-                .id(10L)
                 .token("STUDENT_VALID_TOKEN")
                 .userEmail("sachin@college.edu")
                 .expiresAt(LocalDateTime.now().plusHours(1))
                 .active(true)
                 .build();
+        validQrCode.setId(10L);
     }
 
     @Test
@@ -157,8 +157,10 @@ class BatchAttendanceTest {
     @Test
     @DisplayName("Test 3: Student belongs to wrong batch -> Throws ForbiddenException (403 FORBIDDEN)")
     void testWrongBatchStudent_Throws403Forbidden() {
-        Batch otherBatch = Batch.builder().id(99L).name("JRA-DSWDSD-A7").build();
-        Student wrongBatchStudent = Student.builder().id(200L).batch(otherBatch).active(true).build();
+        Batch otherBatch = Batch.builder().name("JRA-DSWDSD-A7").build();
+        otherBatch.setId(99L);
+        Student wrongBatchStudent = Student.builder().batch(otherBatch).active(true).build();
+        wrongBatchStudent.setId(200L);
 
         QrScanRequest request = QrScanRequest.builder()
                 .sessionId(50L)
@@ -202,9 +204,9 @@ class BatchAttendanceTest {
     @DisplayName("Test 5: Session Closed -> Throws BadRequestException")
     void testClosedSessionScan_ThrowsBadRequestException() {
         AttendanceSession closedSession = AttendanceSession.builder()
-                .id(50L)
                 .status(AttendanceSessionStatus.CLOSED)
                 .build();
+        closedSession.setId(50L);
 
         QrScanRequest request = QrScanRequest.builder()
                 .sessionId(50L)
@@ -227,7 +229,7 @@ class BatchAttendanceTest {
         BatchAttendanceResponse response = attendanceService.getBatchAttendance(1L);
 
         assertNotNull(response);
-        assertEquals("JRA-GROGRD-E532", response.getBatchCode());
-        assertEquals("Rajajinagar Jspiders", response.getBranchName());
+        assertEquals("CSE-2026-A", response.getBatchCode());
+        assertEquals("Main Campus", response.getBranchName());
     }
 }

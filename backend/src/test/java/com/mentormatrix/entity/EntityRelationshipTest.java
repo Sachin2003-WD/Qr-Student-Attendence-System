@@ -77,7 +77,7 @@ public class EntityRelationshipTest {
         Batch batch = batchRepository.save(Batch.builder().name("2022-2026").course(course).startYear(2022).endYear(2026).semester(5).active(true).deleted(false).build());
 
         User studentUser = userRepository.save(User.builder().name("Student 1").email("student1@test.com").phone("9876543210").password("pass").role(UserRole.STUDENT).active(true).deleted(false).build());
-        Student student = studentRepository.save(Student.builder().user(studentUser).studentId("STU-101").department(dept).course(course).batch(batch).semester(5).section("A").status(StudentStatus.ACTIVE).active(true).deleted(false).build());
+        Student student = studentRepository.save(Student.builder().user(studentUser).name("Student 1").email("student1@test.com").phone("9876543210").password("pass").studentId("STU-101").department(dept).course(course).batch(batch).semester(5).section("A").status(StudentStatus.ACTIVE).active(true).deleted(false).build());
 
         Enrollment e1 = Enrollment.builder().student(student).batch(batch).enrollmentDate(LocalDate.now()).status(EnrollmentStatus.ACTIVE).active(true).deleted(false).build();
         enrollmentRepository.saveAndFlush(e1);
@@ -101,7 +101,7 @@ public class EntityRelationshipTest {
         Faculty faculty = facultyRepository.save(Faculty.builder().user(facUser).facultyId("FAC-201").department(dept).status(FacultyStatus.ACTIVE).active(true).deleted(false).build());
 
         User stuUser = userRepository.save(User.builder().name("Student 2").email("student2@test.com").phone("9876543211").password("pass").role(UserRole.STUDENT).active(true).deleted(false).build());
-        Student student = studentRepository.save(Student.builder().user(stuUser).studentId("STU-102").department(dept).course(course).batch(batch).semester(3).section("B").status(StudentStatus.ACTIVE).active(true).deleted(false).build());
+        Student student = studentRepository.save(Student.builder().user(stuUser).name("Student 2").email("student2@test.com").phone("9876543211").password("pass").studentId("STU-102").department(dept).course(course).batch(batch).semester(3).section("B").status(StudentStatus.ACTIVE).active(true).deleted(false).build());
 
         AttendanceSession session = attendanceSessionRepository.save(AttendanceSession.builder()
                 .faculty(faculty)

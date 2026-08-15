@@ -20,12 +20,18 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     List<Student> findAllByDeletedFalse();
     Page<Student> findByDepartmentIdAndDeletedFalse(Long departmentId, Pageable pageable);
 
+    @Query("SELECT s FROM Student s WHERE s.deleted = false AND (LOWER(s.email) = LOWER(:email) OR (s.user IS NOT NULL AND LOWER(s.user.email) = LOWER(:email)))")
+    Optional<Student> findByEmailIgnoreCase(@Param("email") String email);
+
     default Optional<Student> findByEmailAndDeletedFalse(String email) {
-        return findByUserEmailAndDeletedFalse(email);
+        if (email == null) return Optional.empty();
+        String cleanEmail = email.trim().toLowerCase();
+        Optional<Student> res = findByEmailIgnoreCase(cleanEmail);
+        return res.isPresent() ? res : findByUserEmailAndDeletedFalse(cleanEmail);
     }
 
     default boolean existsByEmailAndDeletedFalse(String email) {
-        return findByUserEmailAndDeletedFalse(email).isPresent();
+        return findByEmailAndDeletedFalse(email).isPresent();
     }
 
     default boolean existsByUsnAndDeletedFalse(String usn) {

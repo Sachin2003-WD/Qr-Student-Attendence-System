@@ -7,7 +7,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,23 +30,30 @@ public class Batch extends BaseEntity {
     @Column(name = "batch_code", length = 50)
     private String batchCode;
 
-    @NotNull(message = "Course is required")
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @Column(name = "department_name", length = 100)
+    private String departmentName;
+
+    @Column(name = "department_code", length = 20)
+    private String departmentCode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = true)
     private Course course;
 
-    @NotNull(message = "Start year is required")
-    @Column(name = "start_year", nullable = false)
+    @Column(name = "start_year")
     private Integer startYear;
 
-    @NotNull(message = "End year is required")
-    @Column(name = "end_year", nullable = false)
+    @Column(name = "end_year")
     private Integer endYear;
 
     @Column(length = 10)
     private String section;
 
-    @Column(nullable = false)
+    @Column
     private Integer semester;
 
     @Column(length = 100)
@@ -69,6 +75,12 @@ public class Batch extends BaseEntity {
     public void setName(String name) { this.name = name; }
     public String getBatchCode() { return batchCode; }
     public void setBatchCode(String batchCode) { this.batchCode = batchCode; }
+    public Department getDepartment() { return department; }
+    public void setDepartment(Department department) { this.department = department; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+    public String getDepartmentCode() { return departmentCode; }
+    public void setDepartmentCode(String departmentCode) { this.departmentCode = departmentCode; }
     public Course getCourse() { return course; }
     public void setCourse(Course course) { this.course = course; }
     public Integer getStartYear() { return startYear; }
@@ -97,6 +109,9 @@ public class Batch extends BaseEntity {
     public static class BatchBuilder {
         private String name;
         private String batchCode;
+        private Department department;
+        private String departmentName;
+        private String departmentCode;
         private Course course;
         private Integer startYear;
         private Integer endYear;
@@ -112,6 +127,9 @@ public class Batch extends BaseEntity {
 
         public BatchBuilder name(String name) { this.name = name; return this; }
         public BatchBuilder batchCode(String batchCode) { this.batchCode = batchCode; return this; }
+        public BatchBuilder department(Department department) { this.department = department; return this; }
+        public BatchBuilder departmentName(String departmentName) { this.departmentName = departmentName; return this; }
+        public BatchBuilder departmentCode(String departmentCode) { this.departmentCode = departmentCode; return this; }
         public BatchBuilder course(Course course) { this.course = course; return this; }
         public BatchBuilder startYear(Integer startYear) { this.startYear = startYear; return this; }
         public BatchBuilder endYear(Integer endYear) { this.endYear = endYear; return this; }
@@ -129,16 +147,19 @@ public class Batch extends BaseEntity {
             Batch b = new Batch();
             b.setName(name);
             b.setBatchCode(batchCode);
+            b.setDepartment(department);
+            b.setDepartmentName(departmentName);
+            b.setDepartmentCode(departmentCode);
             b.setCourse(course);
-            b.setStartYear(startYear);
-            b.setEndYear(endYear);
+            b.setStartYear(startYear != null ? startYear : 2024);
+            b.setEndYear(endYear != null ? endYear : 2026);
             b.setSection(section);
-            b.setSemester(semester);
-            b.setBranch(branch);
-            b.setClassTiming(classTiming);
-            b.setSubjectName(subjectName);
-            b.setTrainerName(trainerName);
-            b.setStartDate(startDate);
+            b.setSemester(semester != null ? semester : 5);
+            b.setBranch(branch != null ? branch : "");
+            b.setClassTiming(classTiming != null ? classTiming : "");
+            b.setSubjectName(subjectName != null ? subjectName : "");
+            b.setTrainerName(trainerName != null ? trainerName : "");
+            b.setStartDate(startDate != null ? startDate : LocalDate.now());
             b.setActive(active != null ? active : true);
             b.setDeleted(deleted != null ? deleted : false);
             return b;

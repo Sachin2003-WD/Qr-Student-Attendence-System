@@ -78,6 +78,32 @@ export interface BatchAttendanceData {
   records: AttendanceResponse[];
 }
 
+export interface DepartmentItem {
+  id: number | string;
+  name: string;
+  code: string;
+  description?: string;
+  hodName?: string;
+  location?: string;
+}
+
+export interface DepartmentAttendanceData {
+  departmentId: number | string;
+  departmentName: string;
+  departmentCode: string;
+  description?: string;
+  hodName?: string;
+  location?: string;
+  totalStudents: number;
+  totalBatches?: number;
+  batches?: any[];
+  totalAttendanceLogs: number;
+  presentCount: number;
+  absentCount: number;
+  attendancePercentage: number;
+  recentRecords: AttendanceResponse[];
+}
+
 export interface SubjectSession {
   code: string;
   name: string;
@@ -87,13 +113,47 @@ export interface SubjectSession {
   token: string;
 }
 
-// Available subject sessions for multi-attendance per day
-export const TODAY_SUBJECT_SESSIONS: SubjectSession[] = [
-  { code: "CS301", name: "Data Structures & Algorithms", time: "09:00 AM - 10:00 AM", faculty: "Dr. Aris Thorne", room: "Lab 301", token: "DAILY_CLASSROOM_TOKEN_CS301" },
-  { code: "AI302", name: "Machine Learning & Neural Nets", time: "10:15 AM - 11:15 AM", faculty: "Prof. Elena Vance", room: "Hall B", token: "DAILY_CLASSROOM_TOKEN_AI302" },
-  { code: "MAT303", name: "Discrete Applied Mathematics", time: "11:30 AM - 12:30 PM", faculty: "Dr. Rajesh Kumar", room: "Room 204", token: "DAILY_CLASSROOM_TOKEN_MAT303" },
-  { code: "CS304", name: "Operating Systems & Kernels", time: "02:00 PM - 03:00 PM", faculty: "Prof. Sarah Connor", room: "Lab 102", token: "DAILY_CLASSROOM_TOKEN_CS304" },
-];
+// Compact daily rotating token generator helpers
+export function getDailyTokenForSubject(subjectCode: string): string {
+  const today = new Date();
+  const dayStr = String(today.getDate()).padStart(2, "0");
+  const cleanCode = (subjectCode || "GEN")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .slice(0, 4)
+    .toUpperCase();
+  const dailySeed =
+    ((today.getFullYear() * 1000 +
+      (today.getMonth() + 1) * 31 +
+      today.getDate() +
+      (cleanCode.charCodeAt(0) || 65)) %
+      90) +
+    10;
+  return `D${dayStr}-${cleanCode}-${dailySeed}`;
+}
+
+export function getDailyStudentToken(studentEmail?: string): string {
+  const today = new Date();
+  const dayStr = String(today.getDate()).padStart(2, "0");
+  const email = studentEmail || getItem("sa.email") || "sachin@college.edu";
+  const userPrefix =
+    email
+      .split("@")[0]
+      .replace(/[^A-Za-z0-9]/g, "")
+      .slice(0, 4)
+      .toUpperCase() || "STU";
+  // Constant token for the entire 24h calendar day (changes only at midnight)
+  const dailySeed =
+    Math.abs(
+      (today.getFullYear() * 1000 +
+        (today.getMonth() + 1) * 31 +
+        today.getDate() +
+        (userPrefix.charCodeAt(0) || 83) * 17) %
+        90,
+    ) + 10;
+  return `S${dayStr}-${userPrefix}-${dailySeed}`;
+}
+
+export const TODAY_SUBJECT_SESSIONS: SubjectSession[] = [];
 
 function getItem(key: string): string | null {
   if (typeof window === "undefined" || !window.localStorage) return null;
@@ -140,7 +200,7 @@ function generateFallbackQRCodeSVG(text: string): string {
     hash = (hash << 5) - hash + text.charCodeAt(i);
     hash |= 0;
   }
-  
+
   const matrixSize = 25;
   const cellSize = 10;
   const margin = 20;
@@ -151,10 +211,7 @@ function generateFallbackQRCodeSVG(text: string): string {
   const addFinder = (startR: number, startC: number) => {
     for (let r = 0; r < 7; r++) {
       for (let c = 0; c < 7; c++) {
-        if (
-          r === 0 || r === 6 || c === 0 || c === 6 ||
-          (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-        ) {
+        if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
           grid[startR + r][startC + c] = true;
         }
       }
@@ -186,11 +243,17 @@ function generateFallbackQRCodeSVG(text: string): string {
       const isTopRightFinder = r <= 7 && c >= matrixSize - 8;
       const isBottomLeftFinder = r >= matrixSize - 8 && c <= 7;
       const isAlignment = r >= 15 && r <= 21 && c >= 15 && c <= 21;
-      const isTiming = (r === 6 || c === 6);
+      const isTiming = r === 6 || c === 6;
 
-      if (!isTopLeftFinder && !isTopRightFinder && !isBottomLeftFinder && !isAlignment && !isTiming) {
+      if (
+        !isTopLeftFinder &&
+        !isTopRightFinder &&
+        !isBottomLeftFinder &&
+        !isAlignment &&
+        !isTiming
+      ) {
         const val = Math.abs(Math.sin(r * 12.9898 + c * 78.233 + hash) * 43758.5453);
-        grid[r][c] = (val - Math.floor(val)) > 0.45;
+        grid[r][c] = val - Math.floor(val) > 0.45;
       }
     }
   }
@@ -225,7 +288,10 @@ function getLocalAttendanceRecords(): AttendanceResponse[] {
 
 function saveLocalAttendanceRecord(record: AttendanceResponse): void {
   const existing = getLocalAttendanceRecords();
-  const updated = [record, ...existing.filter(r => !(r.date === record.date && r.subjectCode === record.subjectCode))];
+  const updated = [
+    record,
+    ...existing.filter((r) => !(r.date === record.date && r.subjectCode === record.subjectCode)),
+  ];
   setItem("sa.attendance_records", JSON.stringify(updated));
 }
 
@@ -239,23 +305,165 @@ function getLocalBatches(): any[] {
 
 function saveLocalBatch(batch: any): void {
   const existing = getLocalBatches();
-  const updated = [batch, ...existing.filter(b => b.batchCode !== batch.batchCode)];
+  const updated = [batch, ...existing.filter((b) => b.batchCode !== batch.batchCode)];
   setItem("sa.batches", JSON.stringify(updated));
 }
 
 function removeLocalBatch(batchIdOrCode: any): void {
   const existing = getLocalBatches();
-  const updated = existing.filter(b => b.id !== batchIdOrCode && b.batchCode !== batchIdOrCode);
+  const updated = existing.filter((b) => b.id !== batchIdOrCode && b.batchCode !== batchIdOrCode);
   setItem("sa.batches", JSON.stringify(updated));
 }
 
 const DEFAULT_STUDENTS = [
-  { id: 1, name: "Laxman Ashok Handenavar", email: "laxman@jspiders.com", usn: "1RA21CS001", phone: "9876543210" },
-  { id: 2, name: "Sachin C K", email: "sachin@college.edu", usn: "1RA21CS002", phone: "9876543211" },
-  { id: 3, name: "Priya Sharma", email: "priya.sharma@college.edu", usn: "1RA21CS003", phone: "9876543212" },
-  { id: 4, name: "Rohan Varma", email: "rohan.v@college.edu", usn: "1RA21CS004", phone: "9876543213" },
-  { id: 5, name: "Ananya Rao", email: "ananya.rao@college.edu", usn: "1RA21CS005", phone: "9876543214" },
+  {
+    id: 1,
+    name: "Arjun Kumar",
+    email: "arjun.k@college.edu",
+    usn: "1RA21CS001",
+    phone: "9876543210",
+    department: "Computer Science",
+    semester: 6,
+  },
+  {
+    id: 2,
+    name: "Sachin C K",
+    email: "sachin@college.edu",
+    usn: "1RA21CS002",
+    phone: "9876543211",
+    department: "Computer Science",
+    semester: 6,
+  },
+  {
+    id: 3,
+    name: "Priya Sharma",
+    email: "priya.sharma@college.edu",
+    usn: "1RA21CS003",
+    phone: "9876543212",
+    department: "Information Technology",
+    semester: 6,
+  },
+  {
+    id: 4,
+    name: "Rohan Varma",
+    email: "rohan.v@college.edu",
+    usn: "1RA21CS004",
+    phone: "9876543213",
+    department: "Electronics & Comm",
+    semester: 4,
+  },
+  {
+    id: 5,
+    name: "Ananya Rao",
+    email: "ananya.rao@college.edu",
+    usn: "1RA21CS005",
+    phone: "9876543214",
+    department: "AIML & Data Science",
+    semester: 4,
+  },
+  {
+    id: 6,
+    name: "Vikram Patel",
+    email: "vikram.p@college.edu",
+    usn: "1RA21ME006",
+    phone: "9876543215",
+    department: "Mechanical Eng",
+    semester: 6,
+  },
+  {
+    id: 7,
+    name: "Sneha Kulkarni",
+    email: "sneha.k@college.edu",
+    usn: "1RA21CV007",
+    phone: "9876543216",
+    department: "Civil Engineering",
+    semester: 6,
+  },
 ];
+
+export const DEFAULT_DEPARTMENTS: DepartmentItem[] = [
+  {
+    id: 1,
+    name: "Computer Science",
+    code: "CSE",
+    description: "Department of Computer Science & Engineering",
+    hodName: "Dr. Ramesh Sharma",
+    location: "Block A - 3rd Floor",
+  },
+  {
+    id: 2,
+    name: "Information Technology",
+    code: "IT",
+    description: "Department of Information Technology & Cloud Systems",
+    hodName: "Dr. Meena Iyer",
+    location: "Block B - 2nd Floor",
+  },
+  {
+    id: 3,
+    name: "Electronics & Comm",
+    code: "ECE",
+    description: "Department of Electronics & Communication Engineering",
+    hodName: "Dr. K. Srinivas",
+    location: "Block C - 1st Floor",
+  },
+  {
+    id: 4,
+    name: "AIML & Data Science",
+    code: "AIML",
+    description: "Department of Artificial Intelligence & Machine Learning",
+    hodName: "Dr. Ananya Ray",
+    location: "Block A - 4th Floor",
+  },
+  {
+    id: 5,
+    name: "Mechanical Eng",
+    code: "MECH",
+    description: "Department of Mechanical Engineering & Robotics",
+    hodName: "Dr. Rajeshwar Rao",
+    location: "Workshop Block",
+  },
+  {
+    id: 6,
+    name: "Civil Engineering",
+    code: "CIVIL",
+    description: "Department of Civil & Infrastructure Engineering",
+    hodName: "Dr. Sunil Kumar",
+    location: "Block D - Ground Floor",
+  },
+  {
+    id: 7,
+    name: "Business Administration",
+    code: "MBA",
+    description: "Department of Management Studies & Analytics",
+    hodName: "Dr. Preeti Verma",
+    location: "Management Tower",
+  },
+];
+
+function getLocalDepartments(): DepartmentItem[] {
+  try {
+    const raw = getItem("sa.departments");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_DEPARTMENTS;
+}
+
+function saveLocalDepartment(dept: DepartmentItem): void {
+  const existing = getLocalDepartments();
+  const updated = [dept, ...existing.filter((d) => d.code !== dept.code && d.name !== dept.name)];
+  setItem("sa.departments", JSON.stringify(updated));
+}
+
+function removeLocalDepartment(deptIdOrCode: any): void {
+  const existing = getLocalDepartments();
+  const updated = existing.filter(
+    (d) => d.id !== deptIdOrCode && d.code !== deptIdOrCode && d.name !== deptIdOrCode,
+  );
+  setItem("sa.departments", JSON.stringify(updated));
+}
 
 function getLocalStudents(): any[] {
   try {
@@ -270,7 +478,7 @@ function getLocalStudents(): any[] {
 
 function saveLocalStudent(student: any): void {
   const existing = getLocalStudents();
-  const updated = [student, ...existing.filter(s => s.email !== student.email)];
+  const updated = [student, ...existing.filter((s) => s.email !== student.email)];
   setItem("sa.registered_students", JSON.stringify(updated));
 }
 
@@ -284,22 +492,27 @@ function getLocalAdmins(): any[] {
 
 function saveLocalAdmin(admin: any): void {
   const existing = getLocalAdmins();
-  const updated = [admin, ...existing.filter(a => a.email !== admin.email)];
+  const updated = [admin, ...existing.filter((a) => a.email !== admin.email)];
   setItem("sa.registered_admins", JSON.stringify(updated));
 }
 
 /// Validate Token strictly
-function validateQRToken(token: string): { valid: boolean; subject?: SubjectSession; message?: string } {
+function validateQRToken(token: string): {
+  valid: boolean;
+  subject?: SubjectSession;
+  message?: string;
+} {
   const cleaned = token.trim();
   if (!cleaned || cleaned.length < 3) {
     return { valid: false, message: "Token is too short or empty." };
   }
 
   const activeSessions = getRealtimeSubjectSessions();
-  const matchedSubject = activeSessions.find(s => 
-    cleaned.toUpperCase().includes(s.code.toUpperCase()) || 
-    cleaned.toUpperCase() === s.token.toUpperCase() ||
-    s.token.toUpperCase().includes(cleaned.toUpperCase())
+  const matchedSubject = activeSessions.find(
+    (s) =>
+      cleaned.toUpperCase().includes(s.code.toUpperCase()) ||
+      cleaned.toUpperCase() === s.token.toUpperCase() ||
+      s.token.toUpperCase().includes(cleaned.toUpperCase()),
   );
 
   if (matchedSubject) {
@@ -326,14 +539,17 @@ export function getRealtimeSubjectSessions(): SubjectSession[] {
   try {
     const batches = getLocalBatches();
     if (batches && batches.length > 0) {
-      return batches.map((b: any, idx: number) => ({
-        code: b.batchCode || b.name || `BATCH-0${idx + 1}`,
-        name: b.subjectName || "Subject Session",
-        time: b.classTiming || "04:45 PM",
-        faculty: b.trainerName || "Faculty Trainer",
-        room: b.branch || "Main Branch",
-        token: `TOKEN-${b.batchCode || b.name || idx + 1}`,
-      }));
+      return batches.map((b: any, idx: number) => {
+        const code = b.batchCode || b.name || `BATCH-0${idx + 1}`;
+        return {
+          code,
+          name: b.subjectName || "Subject Session",
+          time: b.classTiming || "04:45 PM",
+          faculty: b.trainerName || "Faculty Trainer",
+          room: b.branch || "Main Branch",
+          token: getDailyTokenForSubject(code),
+        };
+      });
     }
   } catch {}
   return [];
@@ -382,7 +598,12 @@ export const api = {
     }
   },
 
-  updateProfile: async (payload: { name?: string; email?: string; phone?: string; department?: string }): Promise<any> => {
+  updateProfile: async (payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    department?: string;
+  }): Promise<any> => {
     if (payload.name) {
       setItem("sa.name", payload.name);
     }
@@ -398,7 +619,10 @@ export const api = {
     }
   },
 
-  updatePassword: async (payload: { currentPassword?: string; newPassword?: string }): Promise<any> => {
+  updatePassword: async (payload: {
+    currentPassword?: string;
+    newPassword?: string;
+  }): Promise<any> => {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/update-password`, {
         method: "POST",
@@ -413,7 +637,8 @@ export const api = {
 
   forgotPassword: async (email: string, role: string = "student"): Promise<any> => {
     const roleLower = role.toLowerCase();
-    const endpoint = roleLower === "admin" ? "/auth/admin/forgot-password" : "/auth/student/forgot-password";
+    const endpoint =
+      roleLower === "admin" ? "/auth/admin/forgot-password" : "/auth/student/forgot-password";
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
@@ -429,9 +654,13 @@ export const api = {
     }
   },
 
-  resetPassword: async (payload: { email: string; otp: string; newPassword: string; confirmPassword: string }, role: string = "student"): Promise<any> => {
+  resetPassword: async (
+    payload: { email: string; otp: string; newPassword: string; confirmPassword: string },
+    role: string = "student",
+  ): Promise<any> => {
     const roleLower = role.toLowerCase();
-    const endpoint = roleLower === "admin" ? "/auth/admin/reset-password" : "/auth/student/reset-password";
+    const endpoint =
+      roleLower === "admin" ? "/auth/admin/reset-password" : "/auth/student/reset-password";
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
@@ -456,7 +685,12 @@ export const api = {
   registerStudent: async (payload: any): Promise<AuthResponse> => {
     const studentName = payload.name || (payload.email ? payload.email.split("@")[0] : "Student");
     const usnVal = payload.usn || `1RA21CS00${Math.floor(Math.random() * 90 + 10)}`;
-    saveLocalStudent({ name: studentName, email: payload.email, usn: usnVal, phone: payload.phone || "9876543210" });
+    saveLocalStudent({
+      name: studentName,
+      email: payload.email,
+      usn: usnVal,
+      phone: payload.phone || "9876543210",
+    });
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/student/register`, {
@@ -472,7 +706,12 @@ export const api = {
       setItem("sa.name", data.name || studentName);
       return { ...data, token, role: "STUDENT", email: payload.email, name: studentName };
     } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError") &&
+        !err.message.includes("fetch")
+      ) {
         throw err;
       }
       const token = `STUDENT-JWT-${Date.now()}`;
@@ -502,7 +741,12 @@ export const api = {
       setItem("sa.name", data.name || adminName);
       return { ...data, token, role: "ADMIN", email: payload.email, name: adminName };
     } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError") &&
+        !err.message.includes("fetch")
+      ) {
         throw err;
       }
       const token = `ADMIN-JWT-${Date.now()}`;
@@ -539,7 +783,12 @@ export const api = {
       if (data.name) setItem("sa.name", data.name);
       return { ...data, token, role: "STUDENT", email: cleanEmail, name: data.name || studentName };
     } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError") &&
+        !err.message.includes("fetch")
+      ) {
         throw err;
       }
       const token = `STUDENT-JWT-${Date.now()}`;
@@ -570,7 +819,12 @@ export const api = {
       if (data.name) setItem("sa.name", data.name);
       return { ...data, token, role: "ADMIN", email: cleanEmail, name: data.name || adminName };
     } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError") && !err.message.includes("fetch")) {
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError") &&
+        !err.message.includes("fetch")
+      ) {
         throw err;
       }
       const token = `ADMIN-JWT-${Date.now()}`;
@@ -585,15 +839,16 @@ export const api = {
   getDailyQR: async (subjectCode?: string): Promise<QRCodeResponse> => {
     const todayStr = new Date().toISOString().split("T")[0];
     const activeSessions = getRealtimeSubjectSessions();
-    const subj = activeSessions.find(s => s.code === subjectCode) || activeSessions[0] || {
-      code: "GENERAL",
-      name: "General Attendance",
-      time: "09:00 AM",
-      faculty: "Faculty",
-      room: "Classroom",
-      token: "TOKEN-GENERAL",
-    };
-    const token = subj.token;
+    const subj = activeSessions.find((s) => s.code === subjectCode) ||
+      activeSessions[0] || {
+        code: "GENERAL",
+        name: "General Attendance",
+        time: "09:00 AM",
+        faculty: "Faculty",
+        room: "Classroom",
+        token: getDailyTokenForSubject(subjectCode || "GENERAL"),
+      };
+    const token = subj.token || getDailyTokenForSubject(subj.code);
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/qr/daily?subjectCode=${subj.code}`, {
         headers: getAuthHeader(),
@@ -619,9 +874,8 @@ export const api = {
   getDynamicStudentQR: async (): Promise<QRCodeResponse> => {
     const todayStr = new Date().toISOString().split("T")[0];
     const studentEmail = getItem("sa.email") || "sachin@college.edu";
-    const studentUser = studentEmail.split("@")[0].toUpperCase();
-    // Simplified, concise token format
-    const token = `STU-${studentUser}-${Date.now().toString().slice(-4)}`;
+    // Compact daily student token
+    const token = getDailyStudentToken(studentEmail);
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/qr/dynamic`, {
         headers: getAuthHeader(),
@@ -643,7 +897,13 @@ export const api = {
     return api.getDynamicStudentQR();
   },
 
-  createAttendanceSession: async (payload: { batchId: number; subjectId: number; facultyId?: number; sessionDate?: string; startTime?: string }): Promise<any> => {
+  createAttendanceSession: async (payload: {
+    batchId: number;
+    subjectId: number;
+    facultyId?: number;
+    sessionDate?: string;
+    startTime?: string;
+  }): Promise<any> => {
     const res = await fetch(`${API_BASE_URL}/attendance/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getAuthHeader() },
@@ -673,16 +933,24 @@ export const api = {
       const res = await fetch(`${API_BASE_URL}/attendance/scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
-        body: JSON.stringify({ sessionId, qrToken, deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser" }),
+        body: JSON.stringify({
+          sessionId,
+          qrToken,
+          deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser",
+        }),
       });
       const data = await handleResponse<AttendanceResponse>(res);
       saveLocalAttendanceRecord(data);
       return data;
     } catch (err: any) {
-      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError")
+      ) {
         throw err;
       }
-      
+
       const validation = validateQRToken(qrToken);
       if (!validation.valid) {
         throw new Error(validation.message || "Invalid or expired QR code!");
@@ -719,7 +987,7 @@ export const api = {
         subjectCode: matchedSubj.code,
         subjectName: matchedSubj.name,
         sessionTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        recordedByFacultyEmail: matchedSubj.faculty || "Laxman Ashok Handenavar",
+        recordedByFacultyEmail: matchedSubj.faculty || "Faculty Lead",
         deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser",
       };
 
@@ -735,15 +1003,17 @@ export const api = {
       });
       return await handleResponse(res);
     } catch {
+      const localBatches = getLocalBatches();
+      const matched = localBatches.find((b) => b.id === batchId) || localBatches[0] || {};
       return {
         batchId,
-        batchCode: "JRA-GROGRD-E532",
-        batchName: "Grooming Batch E532",
-        subjectName: "Grooming",
-        branchName: "Rajajinagar Jspiders",
-        trainerName: "Laxman Ashok Handenavar",
-        classTiming: "04:45 PM",
-        startDate: "24-Jun-2026",
+        batchCode: matched.batchCode || "CSE-2026-A",
+        batchName: matched.name || "Computer Science Batch A",
+        subjectName: matched.subjectName || "Data Structures",
+        branchName: matched.branch || "Main Campus",
+        trainerName: matched.trainerName || "Faculty Lead",
+        classTiming: matched.classTiming || "09:00 AM",
+        startDate: matched.startDate || "01-Aug-2026",
         totalClasses: 17,
         classesAttended: 15,
         classesAbsent: 2,
@@ -753,22 +1023,27 @@ export const api = {
     }
   },
 
-  getStudentBatchAttendance: async (studentId: number, batchId: number): Promise<BatchAttendanceData> => {
+  getStudentBatchAttendance: async (
+    studentId: number,
+    batchId: number,
+  ): Promise<BatchAttendanceData> => {
     try {
       const res = await fetch(`${API_BASE_URL}/attendance/student/${studentId}/batch/${batchId}`, {
         headers: getAuthHeader(),
       });
       return await handleResponse(res);
     } catch {
+      const localBatches = getLocalBatches();
+      const matched = localBatches.find((b) => b.id === batchId) || localBatches[0] || {};
       return {
         batchId,
-        batchCode: "JRA-GROGRD-E532",
-        batchName: "Grooming Batch E532",
-        subjectName: "Grooming",
-        branchName: "Rajajinagar Jspiders",
-        trainerName: "Laxman Ashok Handenavar",
-        classTiming: "04:45 PM",
-        startDate: "24-Jun-2026",
+        batchCode: matched.batchCode || "CSE-2026-A",
+        batchName: matched.name || "Computer Science Batch A",
+        subjectName: matched.subjectName || "Data Structures",
+        branchName: matched.branch || "Main Campus",
+        trainerName: matched.trainerName || "Faculty Lead",
+        classTiming: matched.classTiming || "09:00 AM",
+        startDate: matched.startDate || "01-Aug-2026",
         totalClasses: 17,
         classesAttended: 15,
         classesAbsent: 2,
@@ -797,7 +1072,11 @@ export const api = {
           "Content-Type": "application/json",
           ...getAuthHeader(),
         },
-        body: JSON.stringify({ token, subjectCode: subj.code, deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser" }),
+        body: JSON.stringify({
+          token,
+          subjectCode: subj.code,
+          deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser",
+        }),
       });
       const data = await handleResponse<AttendanceResponse>(res);
       saveLocalAttendanceRecord(data);
@@ -806,7 +1085,7 @@ export const api = {
       if (err.message && !err.message.includes("Failed to fetch")) {
         throw err;
       }
-      
+
       const currentHour = new Date().getHours();
       const status: "PRESENT" | "LATE" = currentHour >= 11 ? "LATE" : "PRESENT";
 
@@ -839,7 +1118,10 @@ export const api = {
       const summary = await api.getMyAttendanceSummary();
       const todayStr = new Date().toISOString().split("T")[0];
       if (subjectCode) {
-        return summary.records?.some((r) => r.date === todayStr && r.subjectCode === subjectCode) ?? false;
+        return (
+          summary.records?.some((r) => r.date === todayStr && r.subjectCode === subjectCode) ??
+          false
+        );
       }
       return summary.records?.some((r) => r.date === todayStr) ?? false;
     } catch {
@@ -854,7 +1136,7 @@ export const api = {
         headers: getAuthHeader(),
       });
       const data = await handleResponse<AttendanceSummaryResponse>(res);
-      
+
       const allRecords = [...localRecs];
       if (data.records) {
         for (const r of data.records) {
@@ -873,7 +1155,8 @@ export const api = {
         presentCount,
         absentCount: allRecords.filter((r) => r.status === "ABSENT").length,
         lateCount,
-        onLeaveCount: allRecords.filter((r) => r.status === "ON_LEAVE" || r.status === "LEAVE").length,
+        onLeaveCount: allRecords.filter((r) => r.status === "ON_LEAVE" || r.status === "LEAVE")
+          .length,
         holidayCount: 0,
         attendancePercentage,
         records: allRecords,
@@ -882,7 +1165,8 @@ export const api = {
       const presentCount = localRecs.filter((r) => r.status === "PRESENT").length;
       const lateCount = localRecs.filter((r) => r.status === "LATE").length;
       const totalDays = Math.max(localRecs.length, 1);
-      const attendancePercentage = localRecs.length > 0 ? Math.round(((presentCount + lateCount) / totalDays) * 100) : 0;
+      const attendancePercentage =
+        localRecs.length > 0 ? Math.round(((presentCount + lateCount) / totalDays) * 100) : 0;
 
       return {
         totalDays: localRecs.length,
@@ -897,7 +1181,11 @@ export const api = {
     }
   },
 
-  getAttendanceReport: async (params?: { date?: string; status?: string; subjectCode?: string }): Promise<AttendanceResponse[]> => {
+  getAttendanceReport: async (params?: {
+    date?: string;
+    status?: string;
+    subjectCode?: string;
+  }): Promise<AttendanceResponse[]> => {
     try {
       const query = new URLSearchParams();
       if (params?.date) query.set("date", params.date);
@@ -909,7 +1197,7 @@ export const api = {
     } catch {
       let recs = getLocalAttendanceRecords();
       if (params?.subjectCode) {
-        recs = recs.filter(r => r.subjectCode === params.subjectCode);
+        recs = recs.filter((r) => r.subjectCode === params.subjectCode);
       }
       return recs;
     }
@@ -942,7 +1230,7 @@ export const api = {
         email: activeEmail,
         phone: "9876543210",
         active: true,
-        role: "ADMIN"
+        role: "ADMIN",
       });
     }
 
@@ -962,7 +1250,7 @@ export const api = {
           email: a.email,
           phone: a.phone || "9876543210",
           active: a.active !== false,
-          role: "ADMIN"
+          role: "ADMIN",
         });
       }
     }
@@ -970,7 +1258,12 @@ export const api = {
     return Array.from(map.values());
   },
 
-  createAdmin: async (payload: { name: string; email: string; phone: string; password: string }): Promise<any> => {
+  createAdmin: async (payload: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+  }): Promise<any> => {
     const body = { ...payload, confirmPassword: payload.password };
     const adminObj = {
       id: Date.now(),
@@ -978,7 +1271,7 @@ export const api = {
       email: payload.email,
       phone: payload.phone || "9876543210",
       active: true,
-      role: "ADMIN"
+      role: "ADMIN",
     };
     saveLocalAdmin(adminObj);
     try {
@@ -1008,15 +1301,29 @@ export const api = {
     }
   },
 
-  createBatch: async (payload: { name: string; batchCode: string; subjectName?: string; branch?: string; classTiming?: string; trainerName?: string; startDate?: string }): Promise<any> => {
+  createBatch: async (payload: {
+    name: string;
+    batchCode: string;
+    departmentId?: number | string;
+    departmentName?: string;
+    departmentCode?: string;
+    subjectName?: string;
+    branch?: string;
+    classTiming?: string;
+    trainerName?: string;
+    startDate?: string;
+  }): Promise<any> => {
     const batchObj = {
       id: Date.now(),
-      name: payload.name,
-      batchCode: payload.batchCode,
-      subjectName: payload.subjectName || "Grooming",
-      branch: payload.branch || "Rajajinagar Jspiders",
-      classTiming: payload.classTiming || "04:45 PM",
-      trainerName: payload.trainerName || "Laxman Ashok Handenavar",
+      name: payload.name.trim(),
+      batchCode: payload.batchCode.trim().toUpperCase(),
+      departmentId: payload.departmentId,
+      departmentName: payload.departmentName?.trim() || "General",
+      departmentCode: payload.departmentCode?.trim().toUpperCase() || "GEN",
+      subjectName: payload.subjectName?.trim() || "",
+      branch: payload.branch?.trim() || "",
+      classTiming: payload.classTiming?.trim() || "",
+      trainerName: payload.trainerName?.trim() || "",
       startDate: payload.startDate || new Date().toISOString().split("T")[0],
     };
     saveLocalBatch(batchObj);
@@ -1055,7 +1362,7 @@ export const api = {
       const remoteList = data.content || data.items || (Array.isArray(data) ? data : []);
       const merged = [...remoteList];
       for (const loc of localList) {
-        if (!merged.some(m => m.email === loc.email || m.usn === loc.usn)) {
+        if (!merged.some((m) => m.email === loc.email || m.usn === loc.usn)) {
           merged.push(loc);
         }
       }
@@ -1076,6 +1383,133 @@ export const api = {
     }
   },
 
+  getDepartments: async (): Promise<DepartmentItem[]> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/departments`, {
+        headers: getAuthHeader(),
+      });
+      const data = await handleResponse<any>(res);
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+      return getLocalDepartments();
+    } catch {
+      return getLocalDepartments();
+    }
+  },
+
+  createDepartment: async (payload: {
+    name: string;
+    code: string;
+    description?: string;
+    hodName?: string;
+    location?: string;
+  }): Promise<any> => {
+    const deptObj: DepartmentItem = {
+      id: Date.now(),
+      name: payload.name.trim(),
+      code: payload.code.trim().toUpperCase(),
+      description: payload.description?.trim() || `Department of ${payload.name.trim()}`,
+      hodName: payload.hodName?.trim() || "",
+      location: payload.location?.trim() || "",
+    };
+    saveLocalDepartment(deptObj);
+    try {
+      const res = await fetch(`${API_BASE_URL}/departments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify(payload),
+      });
+      return await handleResponse(res);
+    } catch {
+      return deptObj;
+    }
+  },
+
+  deleteDepartment: async (id: number | string): Promise<any> => {
+    removeLocalDepartment(id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/departments/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeader(),
+      });
+      return await handleResponse(res);
+    } catch {
+      return { success: true, message: "Department deleted successfully" };
+    }
+  },
+
+  getDepartmentWiseAttendance: async (): Promise<DepartmentAttendanceData[]> => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/departments/attendance`, {
+        headers: getAuthHeader(),
+      });
+      const data = await handleResponse<any>(res);
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    } catch {
+      // fallback
+    }
+
+    const depts = getLocalDepartments();
+    const students = getLocalStudents();
+    const records = getLocalAttendanceRecords();
+    const batches = getLocalBatches();
+
+    return depts.map((d) => {
+      const deptStudents = students.filter(
+        (s) =>
+          (s.department &&
+            (s.department.toLowerCase() === d.name.toLowerCase() ||
+              s.department.toLowerCase().includes(d.name.toLowerCase()) ||
+              d.name.toLowerCase().includes(s.department.toLowerCase()))) ||
+          (s.department && s.department.toLowerCase() === d.code.toLowerCase()),
+      );
+      const studentEmails = new Set(deptStudents.map((s) => s.email.toLowerCase()));
+
+      const deptBatches = batches.filter(
+        (b) =>
+          (b.departmentId && String(b.departmentId) === String(d.id)) ||
+          (b.departmentName &&
+            (b.departmentName.toLowerCase() === d.name.toLowerCase() ||
+              d.name.toLowerCase().includes(b.departmentName.toLowerCase()))) ||
+          (b.departmentCode && b.departmentCode.toLowerCase() === d.code.toLowerCase()),
+      );
+
+      const deptLogs = records.filter((r) => studentEmails.has(r.userEmail?.toLowerCase() || ""));
+      const totalStudents = deptStudents.length;
+      const totalLogs = deptLogs.length;
+      const presentCount = deptLogs.filter(
+        (r) => r.status === "PRESENT" || r.status === "LATE",
+      ).length;
+      const absentCount = deptLogs.filter((r) => r.status === "ABSENT").length;
+      const pct =
+        totalLogs > 0
+          ? Math.round((presentCount / totalLogs) * 1000) / 10
+          : totalStudents > 0
+            ? 0.0
+            : 0.0;
+
+      return {
+        departmentId: d.id,
+        departmentName: d.name,
+        departmentCode: d.code,
+        description: d.description,
+        hodName: d.hodName || "",
+        location: d.location || "",
+        totalStudents,
+        totalBatches: deptBatches.length,
+        batches: deptBatches,
+        totalAttendanceLogs: totalLogs,
+        presentCount,
+        absentCount,
+        attendancePercentage: pct,
+        recentRecords: deptLogs.slice(0, 10),
+      };
+    });
+  },
+
   exportPdfReport: async (): Promise<void> => {
     const res = await fetch(`${API_BASE_URL}/attendance/export/pdf`, { headers: getAuthHeader() });
     if (!res.ok) throw new Error("Failed to generate PDF report");
@@ -1090,7 +1524,9 @@ export const api = {
   },
 
   exportExcelReport: async (): Promise<void> => {
-    const res = await fetch(`${API_BASE_URL}/attendance/export/excel`, { headers: getAuthHeader() });
+    const res = await fetch(`${API_BASE_URL}/attendance/export/excel`, {
+      headers: getAuthHeader(),
+    });
     if (!res.ok) throw new Error("Failed to generate Excel report");
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);

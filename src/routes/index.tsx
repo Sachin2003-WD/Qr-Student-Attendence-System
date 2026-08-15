@@ -150,13 +150,13 @@ function Landing() {
             {/* TRUST BADGES */}
             <div className="pt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted-foreground font-mono font-medium">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Dynamic 120s Token Rotation
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Daily Token Refresh
               </span>
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" /> MySQL DB & Spring Boot
+                <ShieldCheck className="h-4 w-4 text-emerald-500" /> Secure
               </span>
               <span className="flex items-center gap-1.5">
-                <Zap className="h-4 w-4 text-emerald-500" /> 3s Realtime Live Sync
+                <Zap className="h-4 w-4 text-emerald-500" /> Live
               </span>
             </div>
           </div>

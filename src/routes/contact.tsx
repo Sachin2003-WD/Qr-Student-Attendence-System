@@ -131,7 +131,7 @@ function Contact() {
                 <MapPin className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground font-medium">Headquarters</p>
+                <p className="text-xs text-muted-foreground font-medium">Location</p>
                 <p className="text-sm font-bold text-foreground">Bengaluru, Karnataka, India</p>
               </div>
             </Card>
@@ -160,7 +160,7 @@ function Contact() {
               <Input
                 type="email"
                 required
-                placeholder="e.g. example@gmail.com"
+                placeholder="Enter Your Email"
                 className="h-9 text-xs font-mono"
               />
             </div>

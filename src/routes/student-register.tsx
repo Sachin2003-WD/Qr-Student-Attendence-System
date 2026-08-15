@@ -284,7 +284,7 @@ function StudentRegisterPage() {
                       maxLength={2}
                       value={formData.section}
                       onChange={(e) => updateField("section", e.target.value)}
-                      placeholder="A"
+                      placeholder="Section"
                       className="h-9 text-xs font-mono uppercase"
                     />
                   </div>

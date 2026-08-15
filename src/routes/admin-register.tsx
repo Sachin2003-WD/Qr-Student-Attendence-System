@@ -221,7 +221,7 @@ function AdminRegisterPage() {
                     required
                     value={formData.securityKey}
                     onChange={(e) => updateField("securityKey", e.target.value)}
-                    placeholder="Enter security"
+                    placeholder="Enter security key"
                     className="h-10 text-xs font-mono uppercase border-indigo-500/40 bg-indigo-500/5"
                   />
                   <p className="text-[10px] text-muted-foreground">

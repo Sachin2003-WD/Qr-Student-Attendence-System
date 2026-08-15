@@ -20,6 +20,10 @@ public class BatchRequest {
     @NotBlank(message = "Batch code is required")
     private String batchCode;
 
+    private Long departmentId;
+    private String departmentName;
+    private String departmentCode;
+
     private String subjectName;
     private String branch;
     private String classTiming;
@@ -34,6 +38,12 @@ public class BatchRequest {
     public void setName(String name) { this.name = name; }
     public String getBatchCode() { return batchCode; }
     public void setBatchCode(String batchCode) { this.batchCode = batchCode; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+    public String getDepartmentName() { return departmentName; }
+    public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+    public String getDepartmentCode() { return departmentCode; }
+    public void setDepartmentCode(String departmentCode) { this.departmentCode = departmentCode; }
     public String getSubjectName() { return subjectName; }
     public void setSubjectName(String subjectName) { this.subjectName = subjectName; }
     public String getBranch() { return branch; }

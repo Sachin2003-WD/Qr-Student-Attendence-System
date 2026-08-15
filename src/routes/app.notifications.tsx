@@ -65,8 +65,8 @@ const DEFAULT_NOTIFICATIONS: AppNotification[] = [
   {
     id: "notif-2",
     title: "Attendance Roster Sync Completed",
-    body: "Daily batch attendance session records for Grooming & Skills and Java Full Stack have been successfully updated in MySQL database.",
-    sender: "Laxman Ashok Handenavar (Faculty Lead)",
+    body: "Daily batch attendance session records for Computer Science and Information Technology have been successfully updated in database.",
+    sender: "Academic Faculty Lead",
     recipient: "ALL_STUDENTS",
     recipientName: "All Students",
     priority: "important",

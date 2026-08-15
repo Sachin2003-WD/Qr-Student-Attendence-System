@@ -67,7 +67,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         return qrCodeRepository.findByDateAndDeletedFalse(today)
                 .map(this::mapToQRCodeResponse)
                 .orElseGet(() -> {
-                    String token = "MM-DAILY-" + today + "-" + UUID.randomUUID().toString().substring(0, 8);
+                    String dayStr = String.format("%02d", today.getDayOfMonth());
+                    String shortHash = Integer.toHexString((today.toString() + (creatorEmail != null ? creatorEmail : "")).hashCode()).toUpperCase();
+                    if (shortHash.length() > 4) shortHash = shortHash.substring(0, 4);
+                    String token = "D" + dayStr + "-" + shortHash;
                     LocalDateTime expiresAt = LocalDateTime.of(today, LocalTime.MAX);
                     String base64Image = QRCodeGeneratorUtil.generateQRCodeBase64(token, 300, 300);
 
@@ -90,8 +93,12 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional
     public QRCodeResponse generateDynamicStudentQRCode(String studentEmail) {
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime expiresAt = now.plusSeconds(60);
-        String token = "MM-STUDENT-" + UUID.randomUUID().toString() + "-" + now.getSecond();
+        LocalDateTime expiresAt = now.plusSeconds(120);
+        String dayStr = String.format("%02d", now.getDayOfMonth());
+        String userPrefix = studentEmail != null ? studentEmail.split("@")[0].toUpperCase() : "STU";
+        if (userPrefix.length() > 4) userPrefix = userPrefix.substring(0, 4);
+        int timeHash = (now.getMinute() * 60 + now.getSecond()) % 90 + 10;
+        String token = "S" + dayStr + "-" + userPrefix + "-" + timeHash;
         String base64Image = QRCodeGeneratorUtil.generateQRCodeBase64(token, 300, 300);
 
         qrCodeRepository.findByUserEmailAndDeletedFalse(studentEmail)
@@ -487,11 +494,11 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .batchId(batch.getId())
                 .batchCode(batch.getBatchCode() != null ? batch.getBatchCode() : batch.getName())
                 .batchName(batch.getName())
-                .subjectName(batch.getSubjectName() != null ? batch.getSubjectName() : "Grooming")
-                .branchName(batch.getBranch() != null ? batch.getBranch() : "Rajajinagar Jspiders")
-                .trainerName(batch.getTrainerName() != null ? batch.getTrainerName() : "Laxman Ashok Handenavar")
-                .classTiming(batch.getClassTiming() != null ? batch.getClassTiming() : "04:45 PM")
-                .startDate(batch.getStartDate() != null ? batch.getStartDate().toString() : "2026-06-24")
+                .subjectName(batch.getSubjectName() != null ? batch.getSubjectName() : "General Session")
+                .branchName(batch.getBranch() != null ? batch.getBranch() : "Main Campus")
+                .trainerName(batch.getTrainerName() != null ? batch.getTrainerName() : "Faculty Trainer")
+                .classTiming(batch.getClassTiming() != null ? batch.getClassTiming() : "09:00 AM")
+                .startDate(batch.getStartDate() != null ? batch.getStartDate().toString() : LocalDate.now().toString())
                 .totalClasses(Math.max(totalClasses, 1))
                 .classesAttended(presentCount)
                 .classesAbsent(absentCount)

@@ -13,6 +13,8 @@ import java.util.Optional;
 public interface BatchRepository extends JpaRepository<Batch, Long> {
     Optional<Batch> findByBatchCodeAndDeletedFalse(String batchCode);
     List<Batch> findByDeletedFalse();
+    List<Batch> findByDepartmentIdAndDeletedFalse(Long departmentId);
+    List<Batch> findByDepartmentNameIgnoreCaseAndDeletedFalse(String departmentName);
     Page<Batch> findByCourseIdAndDeletedFalse(Long courseId, Pageable pageable);
     List<Batch> findByCourseIdAndDeletedFalse(Long courseId);
 }

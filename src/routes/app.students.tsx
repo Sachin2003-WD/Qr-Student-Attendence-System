@@ -146,7 +146,7 @@ function StudentsPage() {
             variant="outline"
             className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
           >
-            Realtime Live Sync (3s)
+            Live
           </Badge>
         </div>
 
@@ -183,11 +183,11 @@ function StudentsPage() {
                       </span>
                     </div>
                     <CardTitle className="text-base font-bold text-foreground line-clamp-1">
-                      {b.subjectName || "Grooming & Skills"}
+                      {b.subjectName || b.name || "Subject Session"}
                     </CardTitle>
                     <CardDescription className="text-xs flex items-center gap-1 text-muted-foreground">
                       <Building2 className="h-3 w-3 text-muted-foreground" />{" "}
-                      {b.branch || "Rajajinagar Jspiders"}
+                      {b.branch || "Main Campus"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-4 space-y-3">
@@ -197,7 +197,7 @@ function StudentsPage() {
                           <Calendar className="h-3 w-3" /> Started At
                         </span>
                         <p className="font-medium text-foreground">
-                          {b.startDate || "24-Jun-2026"}
+                          {b.startDate || "—"}
                         </p>
                       </div>
                       <div className="space-y-0.5">
@@ -205,7 +205,7 @@ function StudentsPage() {
                           <Clock className="h-3 w-3" /> Class Timing
                         </span>
                         <p className="font-medium text-foreground font-mono">
-                          {b.classTiming || "04:45 PM"}
+                          {b.classTiming || "—"}
                         </p>
                       </div>
                     </div>
@@ -215,7 +215,7 @@ function StudentsPage() {
                         <User className="h-3 w-3" /> Trainer / Faculty
                       </span>
                       <p className="text-xs font-semibold text-foreground">
-                        {b.trainerName || "Laxman Ashok Handenavar"}
+                        {b.trainerName || "—"}
                       </p>
                     </div>
 
@@ -264,9 +264,9 @@ function StudentsPage() {
               {selectedBatch?.batchCode || selectedBatch?.name}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Batch: <strong>{selectedBatch?.subjectName || "Grooming"}</strong> | Branch:{" "}
-              <strong>{selectedBatch?.branch || "Rajajinagar Jspiders"}</strong> | Trainer:{" "}
-              <strong>{selectedBatch?.trainerName || "Laxman Ashok Handenavar"}</strong>
+              Batch: <strong>{selectedBatch?.subjectName || "—"}</strong> | Branch:{" "}
+              <strong>{selectedBatch?.branch || "—"}</strong> | Trainer:{" "}
+              <strong>{selectedBatch?.trainerName || "—"}</strong>
             </DialogDescription>
           </DialogHeader>
 

@@ -4,7 +4,13 @@ import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Mail, UserCheck, KeyRound, ArrowLeft } from "lucide-react";
@@ -23,7 +29,9 @@ function Forgot() {
   const nav = useNavigate();
   const search: any = useSearch({ strict: false });
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"student" | "admin">(search?.role === "admin" ? "admin" : "student");
+  const [role, setRole] = useState<"student" | "admin">(
+    search?.role === "admin" ? "admin" : "student",
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +49,9 @@ function Forgot() {
       // Navigate to reset password page with email and role
       nav({ to: "/reset-password", search: { email: cleanEmail, role } as any });
     } catch (err: any) {
-      toast.error(err.message || "Failed to send OTP to email. Please check if email is registered.");
+      toast.error(
+        err.message || "Failed to send OTP to email. Please check if email is registered.",
+      );
     } finally {
       setLoading(false);
     }
@@ -55,8 +65,8 @@ function Forgot() {
         <div className="space-y-2">
           <div>
             Remembered your password?{" "}
-            <Link 
-              to={role === "admin" ? "/admin-login" : "/student-login"} 
+            <Link
+              to={role === "admin" ? "/admin-login" : "/student-login"}
               className="font-semibold text-primary hover:underline"
             >
               Back to {role === "admin" ? "Admin" : "Student"} Sign In
@@ -96,9 +106,15 @@ function Forgot() {
           />
         </div>
 
-        <Button type="submit" className="w-full text-xs font-semibold h-10 gap-2 mt-2" disabled={loading}>
+        <Button
+          type="submit"
+          className="w-full text-xs font-semibold h-10 gap-2 mt-2"
+          disabled={loading}
+        >
           <KeyRound className="h-4 w-4" />
-          {loading ? "Sending Reset OTP…" : `Send OTP to ${role === "admin" ? "Admin" : "Student"} Email`}
+          {loading
+            ? "Sending Reset OTP…"
+            : `Send OTP to ${role === "admin" ? "Admin" : "Student"} Email`}
         </Button>
       </form>
     </AuthShell>

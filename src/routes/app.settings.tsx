@@ -90,23 +90,36 @@ function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Customize your application preferences and security settings." />
+      <PageHeader
+        title="Settings"
+        subtitle="Customize your application preferences and security settings."
+      />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle>Appearance</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <Row label="Dark mode" description="Switch between light and dark themes.">
               <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
             </Row>
-            <Row label="Compact density" description="Compact table spacing and denser card layouts.">
+            <Row
+              label="Compact density"
+              description="Compact table spacing and denser card layouts."
+            >
               <Switch checked={compactDensity} onCheckedChange={setCompactDensity} />
             </Row>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Notifications</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
-            <Row label="Email notifications" description="Attendance alerts and system status emails.">
+            <Row
+              label="Email notifications"
+              description="Attendance alerts and system status emails."
+            >
               <Switch checked={emailNotifs} onCheckedChange={handleToggleEmail} />
             </Row>
             <Row label="In-app notifications" description="Toasts and header bell notifications.">
@@ -118,7 +131,9 @@ function SettingsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Security</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Security</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <form className="space-y-3" onSubmit={handlePasswordUpdate}>
               <div className="grid gap-2">
@@ -137,7 +152,7 @@ function SettingsPage() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (min 6 chars)"
+                  placeholder="Enter new password"
                   required
                 />
               </div>
@@ -149,13 +164,18 @@ function SettingsPage() {
         </Card>
         {role === "admin" && (
           <Card>
-            <CardHeader><CardTitle>System</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>System</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <Row label="Enable auto-backup" description="Nightly database snapshot backup.">
                 <Switch defaultChecked />
               </Row>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => toast.success("Database backup created successfully!")}>
+                <Button
+                  variant="outline"
+                  onClick={() => toast.success("Database backup created successfully!")}
+                >
                   Backup database
                 </Button>
               </div>
@@ -167,7 +187,15 @@ function SettingsPage() {
   );
 }
 
-function Row({ label, description, children }: { label: string; description: string; children: React.ReactNode }) {
+function Row({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">

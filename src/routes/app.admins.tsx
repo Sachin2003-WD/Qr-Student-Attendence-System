@@ -7,7 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { UserPlus, ShieldCheck, AlertCircle, RefreshCw, CheckCircle2, User } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useApp } from "@/lib/app-context";
@@ -135,7 +142,8 @@ function Admins() {
           <CardContent className="flex items-center gap-3 p-4 text-xs text-amber-700 dark:text-amber-300">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <div>
-              <strong>Maximum Limit Reached:</strong> This institution has reached the maximum cap of 10 Administrator accounts.
+              <strong>Maximum Limit Reached:</strong> This institution has reached the maximum cap
+              of 10 Administrator accounts.
             </div>
           </CardContent>
         </Card>
@@ -148,7 +156,7 @@ function Admins() {
               <ShieldCheck className="h-5 w-5 text-primary" /> Register New Administrator Account
             </CardTitle>
             <CardDescription className="text-xs">
-              Enter details for the new administrator. Data will be saved directly into MySQL database.
+              Enter details for the new administrator. Data will be saved directly into Database.
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleCreateAdmin} className="space-y-4">
@@ -159,7 +167,7 @@ function Admins() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Dr. Ramesh Kumar"
+                  placeholder="Enter admin name"
                   className="h-9 text-xs"
                 />
               </div>
@@ -170,18 +178,18 @@ function Admins() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@college.edu"
+                  placeholder="Enter admin email"
                   className="h-9 text-xs"
                 />
               </div>
               <div className="grid gap-2">
-                <Label className="text-xs font-semibold">Phone (10 Digits)</Label>
+                <Label className="text-xs font-semibold">Phone</Label>
                 <Input
                   type="tel"
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="9876543210"
+                  placeholder="Enter your phone number"
                   className="h-9 text-xs font-mono"
                 />
               </div>
@@ -192,13 +200,19 @@ function Admins() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password@123"
+                  placeholder="Enter password"
                   className="h-9 text-xs font-mono"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowModal(false)} className="text-xs">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowModal(false)}
+                className="text-xs"
+              >
                 Cancel
               </Button>
               <Button type="submit" size="sm" disabled={creating} className="text-xs font-semibold">
@@ -214,13 +228,17 @@ function Admins() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base font-bold flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" /> Registered Administrators ({adminsList.length})
+                <ShieldCheck className="h-5 w-5 text-primary" /> Registered Administrators (
+                {adminsList.length})
               </CardTitle>
               <CardDescription className="text-xs mt-0.5">
-                All registered admin accounts saved in the MySQL database system.
+                All registered admin accounts saved in the Database system.
               </CardDescription>
             </div>
-            <Badge variant="outline" className="text-xs font-mono bg-primary/10 text-primary border-primary/20">
+            <Badge
+              variant="outline"
+              className="text-xs font-mono bg-primary/10 text-primary border-primary/20"
+            >
               Active Admins: {adminsList.filter((a) => a.active !== false).length}
             </Badge>
           </div>
@@ -228,7 +246,8 @@ function Admins() {
         <CardContent className="p-0">
           {loading ? (
             <div className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-              <RefreshCw className="h-4 w-4 animate-spin text-primary" /> Loading registered administrators from MySQL...
+              <RefreshCw className="h-4 w-4 animate-spin text-primary" /> Loading registered
+              administrators from MySQL...
             </div>
           ) : adminsList.length > 0 ? (
             <div className="overflow-x-auto">
@@ -244,8 +263,10 @@ function Admins() {
                 </TableHeader>
                 <TableBody>
                   {adminsList.map((a) => {
-                    const isCurrent = userEmail && a.email && a.email.toLowerCase() === userEmail.toLowerCase();
-                    const displayName = a.name || (a.email ? a.email.split("@")[0] : "System Admin");
+                    const isCurrent =
+                      userEmail && a.email && a.email.toLowerCase() === userEmail.toLowerCase();
+                    const displayName =
+                      a.name || (a.email ? a.email.split("@")[0] : "System Admin");
                     const initials = displayName
                       .split(" ")
                       .map((n: string) => n[0])
@@ -254,7 +275,10 @@ function Admins() {
                       .toUpperCase();
 
                     return (
-                      <TableRow key={a.id || a.email} className={`border-border/30 ${isCurrent ? "bg-primary/5" : ""}`}>
+                      <TableRow
+                        key={a.id || a.email}
+                        className={`border-border/30 ${isCurrent ? "bg-primary/5" : ""}`}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8 border border-primary/20">
@@ -264,9 +288,14 @@ function Admins() {
                             </Avatar>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold text-xs text-foreground">{displayName}</span>
+                                <span className="font-semibold text-xs text-foreground">
+                                  {displayName}
+                                </span>
                                 {isCurrent && (
-                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-bold"
+                                  >
                                     You (Logged In)
                                   </Badge>
                                 )}
@@ -274,10 +303,17 @@ function Admins() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{a.email}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{a.phone || "-"}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {a.email}
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          {a.phone || "-"}
+                        </TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className="gap-1 text-[10px] font-semibold bg-primary/10 text-primary border-primary/20">
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 text-[10px] font-semibold bg-primary/10 text-primary border-primary/20"
+                          >
                             <ShieldCheck className="h-3 w-3" /> System Administrator
                           </Badge>
                         </TableCell>
@@ -302,7 +338,9 @@ function Admins() {
             <div className="rounded-xl border border-dashed p-8 text-center space-y-2 my-4 mx-4">
               <ShieldCheck className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <div className="text-sm font-medium">No Registered Administrators Found</div>
-              <p className="text-xs text-muted-foreground">Click "Add Admin" above or register an Admin account to add system administrators.</p>
+              <p className="text-xs text-muted-foreground">
+                Click "Add Admin" above or register an Admin account to add system administrators.
+              </p>
             </div>
           )}
         </CardContent>

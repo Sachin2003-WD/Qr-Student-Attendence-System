@@ -51,19 +51,22 @@ public class StudentAuthService {
             throw new BadRequestException("Student must be at least 16 years old");
         }
 
-        if (userRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        if (userRepository.existsByEmailAndDeletedFalse(cleanEmail) || studentRepository.existsByEmailAndDeletedFalse(cleanEmail)) {
             throw new DuplicateResourceException("Email is already registered");
         }
 
         Department department = null;
         if (request.getDepartment() != null) {
             department = departmentRepository.findByCodeAndDeletedFalse(request.getDepartment())
-                    .orElseGet(() -> departmentRepository.findByNameAndDeletedFalse(request.getDepartment()).orElse(null));
+                    .orElseGet(() -> departmentRepository.findByNameAndDeletedFalse(request.getDepartment())
+                    .orElseGet(() -> departmentRepository.findAll().stream().findFirst().orElse(null)));
         }
 
         User user = User.builder()
                 .name(request.getName())
-                .email(request.getEmail())
+                .email(cleanEmail)
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(UserRole.STUDENT)
@@ -110,26 +113,36 @@ public class StudentAuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
+        String cleanEmail = request.getEmail().trim().toLowerCase();
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        Student student = studentRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+
+        if (student == null && user == null) {
             throw new UnauthorizedException("Invalid credentials");
         }
 
-        if (!Boolean.TRUE.equals(user.getActive())) {
+        String passwordHash = student != null && student.getPassword() != null ? student.getPassword() : (user != null ? user.getPassword() : null);
+        String name = student != null && student.getName() != null ? student.getName() : (user != null ? user.getName() : "Student");
+        Boolean active = student != null && student.getActive() != null ? student.getActive() : (user != null ? user.getActive() : true);
+
+        if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
+            throw new UnauthorizedException("Invalid credentials");
+        }
+
+        if (!Boolean.TRUE.equals(active)) {
             throw new UnauthorizedException("Account is deactivated");
         }
 
-        String token = jwtUtil.generateToken(user.getEmail(), "STUDENT", user.getName());
-        String refreshToken = refreshTokenService.createRefreshToken(user.getEmail(), "STUDENT").getToken();
+        String token = jwtUtil.generateToken(cleanEmail, "STUDENT", name);
+        String refreshToken = refreshTokenService.createRefreshToken(cleanEmail, "STUDENT").getToken();
 
         return AuthResponse.builder()
                 .token(token)
                 .accessToken(token)
                 .refreshToken(refreshToken)
-                .email(user.getEmail())
-                .name(user.getName())
+                .email(cleanEmail)
+                .name(name)
                 .role("STUDENT")
                 .build();
     }
