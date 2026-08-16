@@ -174,7 +174,7 @@ function StudentLoginPage() {
                 Create Student Account
               </Link>
             </div>
-            <div className="pt-2 border-t text-[11px]">
+            {/* <div className="pt-2 border-t text-[11px]">
               Are you an Administrator?{" "}
               <Link
                 to="/admin-login"
@@ -182,7 +182,7 @@ function StudentLoginPage() {
               >
                 Go to Admin Login Page
               </Link>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

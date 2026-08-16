@@ -100,7 +100,7 @@ function StudentLogin() {
         <div className="grid gap-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="pass" className="text-xs font-semibold">Password</Label>
-            <Link to="/forgot-password" className="text-xs text-muted-foreground hover:text-primary font-medium">
+            <Link to="/forgot-password" search={{ role: "student" } as any} className="text-xs text-muted-foreground hover:text-primary font-medium">
               Forgot Password?
             </Link>
           </div>

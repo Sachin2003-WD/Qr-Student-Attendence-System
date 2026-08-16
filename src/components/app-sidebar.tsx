@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Calendar, Bell, User, Settings,
   Users, GraduationCap, BarChart3, Building2, ShieldCheck, Sparkles, QrCode,
-  FileCheck, Clock, BookOpen, Layers
+  FileCheck, Clock, BookOpen, Layers, FlaskConical
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
@@ -15,6 +15,7 @@ type Item = { title: string; url: string; icon: React.ComponentType<{ className?
 const common: Item[] = [
   { title: "Dashboard", url: "/app/dashboard", icon: LayoutDashboard },
   { title: "Attendance", url: "/app/attendance", icon: QrCode },
+  { title: "Lab Attendance", url: "/app/labs", icon: FlaskConical },
   { title: "Calendar", url: "/app/calendar", icon: Calendar },
   { title: "Notifications", url: "/app/notifications", icon: Bell },
 ];

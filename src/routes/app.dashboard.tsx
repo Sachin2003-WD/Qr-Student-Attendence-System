@@ -97,11 +97,9 @@ function Dashboard() {
    ============================================================ */
 function StudentLiveDash() {
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
-  const [qrData, setQrData] = useState<QRCodeResponse | null>(null);
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [copiedToken, setCopiedToken] = useState(false);
 
   const currentDateStr = new Date().toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -112,13 +110,11 @@ function StudentLiveDash() {
   const loadStudentData = async () => {
     try {
       setLoading(true);
-      const [sum, qr, batches] = await Promise.all([
+      const [sum, batches] = await Promise.all([
         api.getMyAttendanceSummary().catch(() => null),
-        api.getDynamicStudentQRCode().catch(() => null),
         api.getBatches().catch(() => []),
       ]);
       if (sum) setSummary(sum);
-      if (qr) setQrData(qr);
 
       if (batches && batches.length > 0) {
         const formatted = batches.map((b: any, idx: number) => ({
@@ -151,14 +147,6 @@ function StudentLiveDash() {
 
     return () => clearInterval(interval);
   }, []);
-
-  const handleCopy = () => {
-    if (!qrData?.token) return;
-    navigator.clipboard.writeText(qrData.token);
-    setCopiedToken(true);
-    toast.success("Compact daily token copied!");
-    setTimeout(() => setCopiedToken(false), 2000);
-  };
 
   return (
     <div className="space-y-6">
@@ -251,52 +239,68 @@ function StudentLiveDash() {
           </CardContent>
         </Card>
 
-        {/* Personal Student Dynamic QR Code Showcase Card */}
-        <Card className="lg:col-span-5 border-primary/30 bg-primary/5 shadow-xs flex flex-col justify-between">
-          <CardHeader className="pb-2 text-center border-b border-primary/10">
+        {/* Attendance Status & Quick Actions Card */}
+        <Card className="lg:col-span-5 border-border/60 shadow-xs flex flex-col justify-between">
+          <CardHeader className="pb-3 border-b border-border/40">
             <div className="flex items-center justify-between mb-1">
               <Badge className="bg-primary text-primary-foreground font-mono text-[9px] uppercase font-bold">
-                Daily Rotating QR
+                Student Status
               </Badge>
               <Badge variant="outline" className="text-[9px] font-mono text-emerald-600 border-emerald-500/30">
                 {currentDateStr}
               </Badge>
             </div>
-            <CardTitle className="text-base font-bold flex items-center justify-center gap-2 text-primary">
-              <QrCode className="h-5 w-5" /> Your Daily Student Dynamic QR
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" /> Academic Standing & Criteria
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Compact daily token changes automatically every day for attendance security.
-            </p>
+            <CardDescription className="text-xs">
+              Minimum 75% attendance is required across all subjects for examination eligibility.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="pt-3 flex flex-col items-center text-center space-y-3">
-            {qrData?.qrCodeBase64 ? (
-              <div className="rounded-2xl border bg-white p-3 shadow-md border-primary/20">
-                <img
-                  src={qrData.qrCodeBase64}
-                  alt="Student Dynamic QR"
-                  className="h-44 w-44 object-contain"
-                />
+          <CardContent className="pt-4 space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-muted-foreground">Overall Attendance:</span>
+                <span className="font-bold font-mono text-sm text-foreground">
+                  {(summary?.attendancePercentage ?? 0).toFixed(1)}%
+                </span>
               </div>
-            ) : (
-              <div className="grid h-44 w-44 place-items-center rounded-2xl border bg-card text-xs">
-                Loading Daily QR...
+              <Progress
+                value={summary?.attendancePercentage ?? 0}
+                className={`h-2.5 rounded-full ${
+                  (summary?.attendancePercentage ?? 0) >= 85
+                    ? "[&>div]:bg-emerald-600"
+                    : (summary?.attendancePercentage ?? 0) >= 75
+                      ? "[&>div]:bg-amber-500"
+                      : "[&>div]:bg-rose-500"
+                }`}
+              />
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>75% Minimum Target</span>
+                <span className="font-semibold text-emerald-600">
+                  {(summary?.attendancePercentage ?? 0) >= 75 ? "Target Achieved ✓" : "Shortage Warning ⚠"}
+                </span>
               </div>
-            )}
-            
-            <div className="flex items-center gap-2 w-full max-w-xs">
-              <span className="text-xs font-mono font-bold bg-background px-3 py-1.5 rounded-lg border border-border text-foreground shadow-xs flex-1 text-center truncate">
-                {qrData?.token || "Generating..."}
-              </span>
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1 px-2.5 shrink-0" onClick={handleCopy}>
-                {copiedToken ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                {copiedToken ? "Copied" : "Copy"}
-              </Button>
             </div>
 
-            <Link to="/app/attendance" className="w-full pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
+              <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40 space-y-0.5">
+                <span className="text-[10px] text-muted-foreground block">Present Days</span>
+                <span className="text-base font-bold text-emerald-600 font-mono">
+                  {summary?.presentCount ?? 0}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40 space-y-0.5">
+                <span className="text-[10px] text-muted-foreground block">Absent Days</span>
+                <span className="text-base font-bold text-rose-600 font-mono">
+                  {summary?.absentCount ?? 0}
+                </span>
+              </div>
+            </div>
+
+            <Link to="/app/attendance" className="block pt-1">
               <Button size="sm" className="w-full text-xs font-bold gap-2">
-                <QrCode className="h-4 w-4" /> Open Fullscreen Attendance View
+                <CheckCircle2 className="h-4 w-4" /> Open Attendance Portal
               </Button>
             </Link>
           </CardContent>
@@ -375,33 +379,22 @@ function AdminLiveDash() {
   const [batches, setBatches] = useState<any[]>([]);
   const [records, setRecords] = useState<AttendanceResponse[]>([]);
   const [departmentsData, setDepartmentsData] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-
-  // Daily QR Card State
-  const [selectedBatchIdx, setSelectedBatchIdx] = useState(0);
-  const [adminDailyQR, setAdminDailyQR] = useState<QRCodeResponse | null>(null);
-  const [copiedToken, setCopiedToken] = useState(false);
-
-  const currentDateStr = new Date().toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 
   const loadAdminData = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoadingData(true);
-      const [batchData, repData, deptData] = await Promise.all([
+      const [batchData, repData, deptData, studentsData] = await Promise.all([
         api.getBatches().catch(() => []),
         api.getAttendanceReport().catch(() => []),
         api.getDepartmentWiseAttendance().catch(() => []),
+        api.getStudents().catch(() => []),
       ]);
       setBatches(batchData || []);
       setRecords(repData || []);
       setDepartmentsData(deptData || []);
-
-      const activeCode = batchData && batchData.length > 0 ? (batchData[0].batchCode || batchData[0].name) : "CSE";
-      api.getDailyQR(activeCode).then((qr) => setAdminDailyQR(qr)).catch(() => {});
+      setStudents(studentsData || []);
     } catch {
       // silent
     } finally {
@@ -420,23 +413,6 @@ function AdminLiveDash() {
   const presentCount = records.filter((r) => r.status === "PRESENT").length;
   const overallPct =
     records.length > 0 ? ((presentCount / records.length) * 100).toFixed(1) : "0.0";
-
-  // Active batch for daily QR
-  const activeBatch = batches[selectedBatchIdx] || {
-    batchCode: "CSE-01",
-    name: "Computer Science Batch A",
-    subjectName: "Data Structures & Algorithms",
-    departmentName: "Computer Science",
-  };
-
-  const dailyCompactToken = getDailyTokenForSubject(activeBatch.batchCode || activeBatch.name || "CSE");
-
-  const handleCopyToken = () => {
-    navigator.clipboard.writeText(dailyCompactToken);
-    setCopiedToken(true);
-    toast.success("Compact daily token copied to clipboard!");
-    setTimeout(() => setCopiedToken(false), 2000);
-  };
 
   return (
     <div className="space-y-6">
@@ -458,149 +434,91 @@ function AdminLiveDash() {
         />
       </div>
 
-      {/* TODAY'S DAILY ROTATING QR & ACTIVE TOKENS CARD + QUICK ACTIONS */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Today's Daily QR Generator Widget */}
-        <Card className="lg:col-span-6 border-primary/30 bg-primary/5 shadow-xs flex flex-col justify-between">
-          <CardHeader className="pb-3 border-b border-primary/10">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold flex items-center gap-2 text-primary">
-                <QrCode className="h-5 w-5" /> Today's Daily Attendance QR & Token
-              </CardTitle>
-              <Badge className="bg-emerald-600 text-white font-mono text-[9px] uppercase font-bold">
-                ● Daily Rotating (Changes Daily)
-              </Badge>
-            </div>
-            <CardDescription className="text-xs">
-              Attendance QR codes & tokens rotate daily for security. Valid for today: <strong>{currentDateStr}</strong>.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              {/* QR Preview */}
-              <div className="p-3 bg-white rounded-2xl shadow-md border-2 border-primary/20 shrink-0">
-                {adminDailyQR?.qrCodeBase64 ? (
-                  <img
-                    src={adminDailyQR.qrCodeBase64}
-                    alt="Daily QR"
-                    className="h-28 w-28 object-contain"
-                  />
-                ) : (
-                  <div className="grid h-28 w-28 place-items-center rounded-lg bg-card text-[10px]">
-                    Loading QR...
-                  </div>
-                )}
+      {/* ADMIN QUICK ACCESS ACTION CARDS */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/app/attendance">
+          <Card className="p-4 border-border/60 hover:border-primary/50 transition-all cursor-pointer group bg-card shadow-xs h-full flex flex-col justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                <QrCode className="h-5 w-5" />
               </div>
-
-              {/* Batch Info & Compact Token Box */}
-              <div className="space-y-2 flex-1 min-w-0 w-full text-left">
-                {batches.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-muted-foreground font-semibold">Select Active Batch:</span>
-                    <select
-                      value={selectedBatchIdx}
-                      onChange={(e) => setSelectedBatchIdx(parseInt(e.target.value, 10))}
-                      className="w-full h-8 text-xs bg-background border border-border rounded-lg px-2 text-foreground font-mono font-medium focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {batches.map((b, idx) => (
-                        <option key={b.id || idx} value={idx}>
-                          {b.batchCode || b.name} — {b.subjectName || "Subject"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div>
-                  <span className="text-[10px] text-muted-foreground font-semibold">Small Daily Token (Valid Today):</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-mono text-xs font-bold bg-background px-3 py-1.5 rounded-lg border border-border text-foreground flex-1 truncate shadow-xs">
-                      {dailyCompactToken}
-                    </span>
-                    <Button size="sm" variant="outline" className="h-7.5 px-2.5 text-xs gap-1 shrink-0" onClick={handleCopyToken}>
-                      {copiedToken ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-                      {copiedToken ? "Copied" : "Copy"}
-                    </Button>
-                  </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate group-hover:text-primary transition-colors">
+                  Camera QR Scanner
                 </div>
-
-                <p className="text-[10px] text-muted-foreground flex items-center gap-1 font-mono">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Rotates automatically on {new Date(Date.now() + 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                </p>
+                <div className="text-xs text-muted-foreground truncate">
+                  Start session & auto-scan
+                </div>
               </div>
             </div>
+            <div className="mt-3 flex items-center text-[11px] font-semibold text-primary gap-1">
+              Launch Scanner <ArrowRight className="h-3 w-3" />
+            </div>
+          </Card>
+        </Link>
 
-            <Link to="/app/attendance" className="block pt-1">
-              <Button size="sm" className="w-full text-xs font-bold gap-2">
-                <QrCode className="h-4 w-4" /> Open Camera Attendance Scanner
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <Link to="/app/reports">
+          <Card className="p-4 border-border/60 hover:border-primary/50 transition-all cursor-pointer group bg-card shadow-xs h-full flex flex-col justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate group-hover:text-emerald-600 transition-colors">
+                  Department Reports
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  Attendance analysis & export
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center text-[11px] font-semibold text-emerald-600 gap-1">
+              View Analytics <ArrowRight className="h-3 w-3" />
+            </div>
+          </Card>
+        </Link>
 
-        {/* Quick Actions Grid */}
-        <div className="lg:col-span-6 grid gap-3 grid-cols-1 sm:grid-cols-2 content-between">
-          <Link to="/app/departments">
-            <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group h-full flex flex-col justify-center">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                  <Building2 className="h-5 w-5" />
+        <Link to="/app/departments">
+          <Card className="p-4 border-border/60 hover:border-primary/50 transition-all cursor-pointer group bg-card shadow-xs h-full flex flex-col justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-purple-500/10 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate group-hover:text-purple-600 transition-colors">
+                  Department Units
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Department Section</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    Department-wise attendance & units
-                  </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  Manage academic branches
                 </div>
               </div>
-            </Card>
-          </Link>
-          <Link to="/app/batches">
-            <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group h-full flex flex-col justify-center">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <Layers className="h-5 w-5" />
+            </div>
+            <div className="mt-3 flex items-center text-[11px] font-semibold text-purple-600 gap-1">
+              Configure Units <ArrowRight className="h-3 w-3" />
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/app/batches">
+          <Card className="p-4 border-border/60 hover:border-primary/50 transition-all cursor-pointer group bg-card shadow-xs h-full flex flex-col justify-between">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <Layers className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate group-hover:text-amber-600 transition-colors">
+                  Batch Roster
                 </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Manage Batches</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    Create & configure batch codes
-                  </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  Assign trainers & codes
                 </div>
               </div>
-            </Card>
-          </Link>
-          <Link to="/app/reports">
-            <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group h-full flex flex-col justify-center">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <TrendingUp className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Monthly Section Reports</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    Real-time section reports & export
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </Link>
-          <Link to="/app/calendar">
-            <Card className="p-4 border-border/60 hover:border-primary/40 transition-all cursor-pointer group h-full flex flex-col justify-center">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
-                  <CalendarCheck className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Calendar View</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    Date-wise session timetables
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </Link>
-        </div>
+            </div>
+            <div className="mt-3 flex items-center text-[11px] font-semibold text-amber-600 gap-1">
+              Manage Batches <ArrowRight className="h-3 w-3" />
+            </div>
+          </Card>
+        </Link>
       </div>
 
       {/* DEPARTMENT SECTION FEATURES & LIVE ATTENDANCE OVERVIEW */}

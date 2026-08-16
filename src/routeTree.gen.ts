@@ -28,6 +28,7 @@ import { Route as AppBatchesRouteImport } from './routes/app.batches'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppDepartmentsRouteImport } from './routes/app.departments'
+import { Route as AppLabsRouteImport } from './routes/app.labs'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
@@ -134,6 +135,11 @@ const AppDepartmentsRoute = AppDepartmentsRouteImport.update({
   path: '/departments',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLabsRoute = AppLabsRouteImport.update({
+  id: '/labs',
+  path: '/labs',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/app/calendar': typeof AppCalendarRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/departments': typeof AppDepartmentsRoute
+  '/app/labs': typeof AppLabsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByTo {
   '/app/calendar': typeof AppCalendarRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/departments': typeof AppDepartmentsRoute
+  '/app/labs': typeof AppLabsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/app/calendar': typeof AppCalendarRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/departments': typeof AppDepartmentsRoute
+  '/app/labs': typeof AppLabsRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/dashboard'
     | '/app/departments'
+    | '/app/labs'
     | '/app/notifications'
     | '/app/profile'
     | '/app/reports'
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/dashboard'
     | '/app/departments'
+    | '/app/labs'
     | '/app/notifications'
     | '/app/profile'
     | '/app/reports'
@@ -363,6 +374,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/dashboard'
     | '/app/departments'
+    | '/app/labs'
     | '/app/notifications'
     | '/app/profile'
     | '/app/reports'
@@ -526,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDepartmentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/labs': {
+      id: '/app/labs'
+      path: '/labs'
+      fullPath: '/app/labs'
+      preLoaderRoute: typeof AppLabsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/notifications': {
       id: '/app/notifications'
       path: '/notifications'
@@ -606,6 +625,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDepartmentsRoute: typeof AppDepartmentsRoute
+  AppLabsRoute: typeof AppLabsRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -621,6 +641,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDepartmentsRoute: AppDepartmentsRoute,
+  AppLabsRoute: AppLabsRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppReportsRoute: AppReportsRoute,

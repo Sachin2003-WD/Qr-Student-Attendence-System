@@ -50,6 +50,7 @@ import {
   Layers,
   Sparkles,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 import jsQR from "jsqr";
 
@@ -147,50 +148,83 @@ function StudentAttendanceView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const studentEmail = localStorage.getItem("sa.email") || "sachin@college.edu";
+  const studentName = localStorage.getItem("sa.name") || studentEmail.split("@")[0] || "Student";
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <Card className="md:col-span-6 border-primary/30 bg-primary/5 shadow-xs flex flex-col justify-between">
+        {/* ENLARGED STUDENT DYNAMIC QR CARD */}
+        <Card className="md:col-span-6 border-primary/30 bg-primary/5 shadow-sm flex flex-col justify-between">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-lg font-bold flex items-center justify-center gap-2 text-primary">
               <QrCode className="h-6 w-6" /> Your Personal Dynamic Attendance QR
             </CardTitle>
             <CardDescription className="text-xs">
-              Point this dynamic QR code at the Admin / Faculty camera lens. It scans automatically
-              with audio confirmation.
+              Point this dynamic QR code at the Admin / Faculty camera scanner. It scans instantly
+              with automatic audio feedback confirmation.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center text-center space-y-4 pt-2">
+          <CardContent className="flex flex-col items-center text-center space-y-4 pt-2 pb-6">
+            {/* Enlarged QR Code Canvas Viewport */}
             {qrData?.qrCodeBase64 ? (
-              <div className="p-4 bg-white rounded-2xl shadow-md border-2 border-primary/20">
+              <div className="p-4 sm:p-5 bg-white rounded-3xl shadow-xl border-4 border-primary/20 transition-all hover:scale-[1.02]">
                 <img
                   src={qrData.qrCodeBase64}
                   alt="Student Dynamic QR"
-                  className="h-60 w-60 object-contain"
+                  className="h-64 w-64 sm:h-72 sm:w-72 object-contain"
                 />
               </div>
             ) : (
-              <div className="grid h-60 w-60 place-items-center rounded-2xl border bg-card text-xs">
-                Generating Live Dynamic QR...
+              <div className="grid h-64 w-64 sm:h-72 sm:w-72 place-items-center rounded-3xl border-2 border-dashed bg-card text-xs">
+                <div className="space-y-2 text-center p-4">
+                  <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
+                  <p className="font-semibold text-foreground">Generating Live Dynamic QR…</p>
+                </div>
               </div>
             )}
 
+            {/* Student Info Chip */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+              <span className="font-bold text-foreground bg-background px-3 py-1 rounded-full border border-border">
+                {studentName}
+              </span>
+              <span className="font-mono text-[11px] text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                1RA21CS002
+              </span>
+              <span className="text-[11px] text-muted-foreground bg-background px-2.5 py-1 rounded-full border border-border">
+                Computer Science
+              </span>
+            </div>
+
+            {/* Token Copy Bar */}
             <div className="space-y-2 max-w-sm w-full">
-              <div className="flex items-center justify-between text-xs font-mono font-bold bg-background p-2.5 rounded-lg border border-border">
-                <span>{qrData?.token || "Generating..."}</span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 text-xs"
-                  onClick={handleCopy}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-500" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                  {copied ? "Copied" : "Copy Token"}
-                </Button>
+              <div className="flex items-center justify-between text-xs font-mono font-bold bg-background p-2.5 rounded-xl border border-border shadow-xs">
+                <span className="text-primary truncate">{qrData?.token || "Generating..."}</span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 text-xs px-2 cursor-pointer"
+                    onClick={handleCopy}
+                  >
+                    {copied ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    onClick={() => fetchStudentData(false)}
+                    title="Refresh Dynamic QR"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -262,6 +296,7 @@ function AdminAttendanceView() {
 
   // Camera & Audio states
   const [cameraActive, setCameraActive] = useState<boolean>(false);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [scanFlash, setScanFlash] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -451,11 +486,13 @@ function AdminAttendanceView() {
 
   // Frame processing and automatic QR decoder
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isScanningRef = useRef<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lastScannedTokenRef = useRef<string>("");
   const lastScanTimestampRef = useRef<number>(0);
 
   const processScannedToken = async (tokenToScan: string, isFromCamera = false) => {
-    if (!tokenToScan.trim()) return;
+    if (!tokenToScan || !tokenToScan.trim()) return;
 
     if (!sessionActive) {
       toast.error(
@@ -534,68 +571,212 @@ function AdminAttendanceView() {
     }
   };
 
-  // Continuous Camera QR Detection Loop
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!sessionActive) {
+      toast.error("Please click 'Start Session' first before scanning.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: "attemptBoth",
+          });
+          if (code && code.data && code.data.trim()) {
+            processScannedToken(code.data.trim(), true);
+          } else {
+            toast.error("Could not find a valid QR code in the uploaded image. Please ensure the QR code is clear.");
+            playScanErrorSound();
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  // High-Performance Camera QR Detection Loop (Hardware BarcodeDetector + Dual-Stage Center-Crop jsQR)
   useEffect(() => {
     let animationFrameId: number;
     let stream: MediaStream | null = null;
+    let isMounted = true;
 
     if (cameraActive && sessionActive) {
-      navigator.mediaDevices
-        ?.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
-        })
-        .then((s) => {
+      const initCamera = async () => {
+        try {
+          let s: MediaStream;
+          try {
+            s = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: facingMode },
+                width: { ideal: 1920, min: 640 },
+                height: { ideal: 1080, min: 480 },
+              },
+            });
+          } catch {
+            // Graceful fallback for webcams or restricted browsers
+            s = await navigator.mediaDevices.getUserMedia({
+              video: true,
+            });
+          }
+
+          if (!isMounted) {
+            s.getTracks().forEach((track) => track.stop());
+            return;
+          }
+
           stream = s;
           if (videoRef.current) {
-            videoRef.current.srcObject = s;
-            videoRef.current.play();
+            const video = videoRef.current;
+            video.srcObject = s;
+            video.setAttribute("playsinline", "true");
+            video.muted = true;
+            try {
+              await video.play();
+            } catch (pErr) {
+              console.warn("Video play notice:", pErr);
+            }
 
-            const scanFrame = () => {
+            let lastScanTime = 0;
+
+            // Initialize Hardware BarcodeDetector if natively supported by browser
+            let barcodeDetector: any = null;
+            if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+              try {
+                barcodeDetector = new (window as any).BarcodeDetector({
+                  formats: ["qr_code"],
+                });
+              } catch {
+                barcodeDetector = null;
+              }
+            }
+
+            const scanFrame = async () => {
+              if (!isMounted) return;
+
               if (
-                videoRef.current &&
-                videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA
+                video &&
+                video.readyState >= 2 &&
+                video.videoWidth > 0 &&
+                video.videoHeight > 0 &&
+                !isScanningRef.current
               ) {
-                const video = videoRef.current;
-                if (!canvasRef.current) {
-                  canvasRef.current = document.createElement("canvas");
-                }
-                const canvas = canvasRef.current;
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                const now = Date.now();
+                // Scan at ~30 FPS for instant hardware & optical software response
+                if (now - lastScanTime > 30) {
+                  lastScanTime = now;
+                  isScanningRef.current = true;
 
-                if (ctx) {
-                  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                  const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: "dontInvert",
-                  });
+                  try {
+                    let detectedData: string | null = null;
+                    const vW = video.videoWidth;
+                    const vH = video.videoHeight;
 
-                  if (code && code.data && code.data.trim()) {
-                    const scannedData = code.data.trim();
-                    const now = Date.now();
-                    // Debounce: allow scan if new token OR after 2.5s cooldown
-                    if (
-                      scannedData !== lastScannedTokenRef.current ||
-                      now - lastScanTimestampRef.current > 2500
-                    ) {
-                      lastScannedTokenRef.current = scannedData;
-                      lastScanTimestampRef.current = now;
-                      processScannedToken(scannedData, true);
+                    // STAGE 1: Fast Center-Crop Pass at 100% Native Resolution
+                    // The target reticle is centered. Cropping the central 65% square eliminates blur and decodes in 2ms.
+                    if (!canvasRef.current) {
+                      canvasRef.current = document.createElement("canvas");
                     }
+                    const canvas = canvasRef.current;
+                    const cropSize = Math.floor(Math.min(vW, vH) * 0.65);
+                    const cropX = Math.floor((vW - cropSize) / 2);
+                    const cropY = Math.floor((vH - cropSize) / 2);
+
+                    canvas.width = cropSize;
+                    canvas.height = cropSize;
+                    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+                    if (ctx) {
+                      ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, cropSize, cropSize);
+                      const cropImageData = ctx.getImageData(0, 0, cropSize, cropSize);
+                      const centerCode = jsQR(cropImageData.data, cropSize, cropSize, {
+                        inversionAttempts: "dontInvert",
+                      });
+                      if (centerCode && centerCode.data && centerCode.data.trim()) {
+                        detectedData = centerCode.data.trim();
+                      }
+                    }
+
+                    // STAGE 2: Hardware-Accelerated Native BarcodeDetector (GPU)
+                    if (!detectedData && barcodeDetector) {
+                      try {
+                        const barcodes = await barcodeDetector.detect(video);
+                        if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                          detectedData = barcodes[0].rawValue.trim();
+                        }
+                      } catch {}
+                    }
+
+                    // STAGE 3: Full-frame jsQR with multi-contrast inversion attempts (for phone screen reflections)
+                    if (!detectedData && ctx) {
+                      const maxDim = 800;
+                      let targetW = vW;
+                      let targetH = vH;
+                      if (targetW > maxDim || targetH > maxDim) {
+                        const ratio = Math.min(maxDim / targetW, maxDim / targetH);
+                        targetW = Math.floor(targetW * ratio);
+                        targetH = Math.floor(targetH * ratio);
+                      }
+                      canvas.width = targetW;
+                      canvas.height = targetH;
+                      ctx.drawImage(video, 0, 0, targetW, targetH);
+                      const fullImageData = ctx.getImageData(0, 0, targetW, targetH);
+
+                      const fullCode = jsQR(fullImageData.data, targetW, targetH, {
+                        inversionAttempts: "attemptBoth",
+                      });
+                      if (fullCode && fullCode.data && fullCode.data.trim()) {
+                        detectedData = fullCode.data.trim();
+                      }
+                    }
+
+                    // Trigger instant attendance verification if token detected
+                    if (detectedData) {
+                      if (
+                        detectedData !== lastScannedTokenRef.current ||
+                        now - lastScanTimestampRef.current > 2000
+                      ) {
+                        lastScannedTokenRef.current = detectedData;
+                        lastScanTimestampRef.current = now;
+                        processScannedToken(detectedData, true);
+                      }
+                    }
+                  } catch (scanErr) {
+                    console.warn("Scan frame error:", scanErr);
+                  } finally {
+                    isScanningRef.current = false;
                   }
                 }
               }
-              animationFrameId = requestAnimationFrame(scanFrame);
+
+              if (isMounted) {
+                animationFrameId = requestAnimationFrame(scanFrame);
+              }
             };
 
             animationFrameId = requestAnimationFrame(scanFrame);
           }
-        })
-        .catch(() => {
+        } catch (err: any) {
+          console.error("Camera access error:", err);
           toast.error("Camera access denied or camera not found on this device.");
           setCameraActive(false);
-        });
+        }
+      };
+
+      initCamera();
     } else {
       if (videoRef.current && videoRef.current.srcObject) {
         const s = videoRef.current.srcObject as MediaStream;
@@ -605,12 +786,13 @@ function AdminAttendanceView() {
     }
 
     return () => {
+      isMounted = false;
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [cameraActive, sessionActive, playScanConfirmationSound, playScanErrorSound]);
+  }, [cameraActive, sessionActive, facingMode, playScanConfirmationSound, playScanErrorSound]);
 
   const handleBatchSelectChange = (batchCode: string) => {
     setSelectedBatchCode(batchCode);
@@ -853,19 +1035,32 @@ function AdminAttendanceView() {
 
       {/* 3. CAMERA AUTOMATIC SCANNER & LAST SCANNED STUDENT PAYLOAD */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* CAMERA SCANNER VIEWPORT */}
-        <Card className="lg:col-span-6 border border-border/60 shadow-xs">
+        {/* ENLARGED CAMERA SCANNER VIEWPORT */}
+        <Card className="lg:col-span-6 border border-border/60 shadow-sm">
           <CardHeader className="pb-3 border-b border-border/40">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Camera className="h-5 w-5 text-primary" /> Automatic Camera QR Scanner
               </CardTitle>
               <div className="flex items-center gap-2">
+                {/* Camera Lens Flip Button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs gap-1 cursor-pointer"
+                  disabled={!sessionActive || !cameraActive}
+                  onClick={() => setFacingMode((prev) => (prev === "environment" ? "user" : "environment"))}
+                  title="Flip between Back and Front camera lenses"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {facingMode === "environment" ? "Back Lens" : "Front Lens"}
+                </Button>
+
                 {/* Audio Feedback Sound Toggle */}
                 <Button
                   size="sm"
                   variant="outline"
-                  className={`h-7 px-2 text-xs gap-1 ${soundEnabled ? "text-emerald-600 border-emerald-500/30" : "text-muted-foreground"}`}
+                  className={`h-7 px-2 text-xs gap-1 cursor-pointer ${soundEnabled ? "text-emerald-600 border-emerald-500/30" : "text-muted-foreground"}`}
                   onClick={() => {
                     setSoundEnabled(!soundEnabled);
                     if (!soundEnabled) playScanConfirmationSound();
@@ -884,7 +1079,7 @@ function AdminAttendanceView() {
                 <Button
                   size="sm"
                   variant={cameraActive ? "default" : "outline"}
-                  className="h-7 text-xs gap-1"
+                  className="h-7 text-xs gap-1 cursor-pointer"
                   disabled={!sessionActive}
                   onClick={() => setCameraActive(!cameraActive)}
                 >
@@ -895,11 +1090,11 @@ function AdminAttendanceView() {
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
-            {/* Real HTML5 Camera Viewport with Automatic Recognition */}
+            {/* Real HTML5 Camera Viewport with Automatic Recognition - Enlarged Viewport */}
             <div
-              className={`relative aspect-video w-full rounded-2xl bg-slate-950 border overflow-hidden flex flex-col items-center justify-center text-center p-4 transition-all duration-300 ${
+              className={`relative w-full h-[480px] sm:h-[540px] md:h-[580px] rounded-3xl bg-slate-950 border overflow-hidden flex flex-col items-center justify-center text-center p-4 transition-all duration-300 ${
                 scanFlash
-                  ? "border-emerald-500 ring-4 ring-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.5)]"
+                  ? "border-emerald-500 ring-4 ring-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.6)]"
                   : "border-slate-800"
               }`}
             >
@@ -912,72 +1107,112 @@ function AdminAttendanceView() {
 
               {cameraActive && sessionActive ? (
                 <>
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40 pointer-events-none" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/60 pointer-events-none" />
 
-                  {/* QR Target Scanning Reticle Overlay */}
+                  {/* Top Status Beacon */}
+                  <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 text-slate-200 border border-slate-700/80 px-3 py-1.5 rounded-full text-[11px] font-medium shadow-lg backdrop-blur-xs">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Live Optical Decoder Active
+                  </div>
+
+                  {/* Enlarged QR Target Scanning Reticle Overlay */}
                   <div
-                    className={`relative z-10 w-52 h-52 border-2 rounded-2xl flex items-center justify-center pointer-events-none transition-all ${
+                    className={`relative z-10 w-72 h-72 sm:w-84 sm:h-84 md:w-96 md:h-96 border-2 rounded-3xl flex items-center justify-center pointer-events-none transition-all ${
                       scanFlash
                         ? "border-emerald-400 bg-emerald-500/20 scale-105"
-                        : "border-primary/80 shadow-[0_0_25px_rgba(59,130,246,0.35)]"
+                        : "border-primary/80 shadow-[0_0_40px_rgba(59,130,246,0.4)]"
                     }`}
                   >
                     <Scan
-                      className={`w-14 h-14 transition-colors ${
+                      className={`w-20 h-20 transition-colors ${
                         scanFlash
                           ? "text-emerald-400 scale-110"
-                          : "text-primary opacity-80 animate-pulse"
+                          : "text-primary opacity-90 animate-pulse"
                       }`}
                     />
-                    <div className="absolute -top-1.5 -left-1.5 w-5 h-5 border-t-4 border-l-4 border-primary rounded-tl-sm" />
-                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 border-t-4 border-r-4 border-primary rounded-tr-sm" />
-                    <div className="absolute -bottom-1.5 -left-1.5 w-5 h-5 border-b-4 border-l-4 border-primary rounded-bl-sm" />
-                    <div className="absolute -bottom-1.5 -right-1.5 w-5 h-5 border-b-4 border-r-4 border-primary rounded-br-sm" />
+                    {/* Enlarged Crisp Corner Markers */}
+                    <div className="absolute -top-3 -left-3 w-9 h-9 border-t-4 border-l-4 border-primary rounded-tl-xl" />
+                    <div className="absolute -top-3 -right-3 w-9 h-9 border-t-4 border-r-4 border-primary rounded-tr-xl" />
+                    <div className="absolute -bottom-3 -left-3 w-9 h-9 border-b-4 border-l-4 border-primary rounded-bl-xl" />
+                    <div className="absolute -bottom-3 -right-3 w-9 h-9 border-b-4 border-r-4 border-primary rounded-br-xl" />
 
                     {/* Animated Scanning Laser Line */}
-                    <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-bounce opacity-75" />
+                    <div className="absolute inset-x-3 h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-bounce opacity-90 shadow-[0_0_15px_rgba(59,130,246,0.8)]" />
                   </div>
 
-                  <p className="relative z-10 text-xs font-semibold text-slate-100 mt-3 bg-slate-900/90 px-3.5 py-1.5 rounded-full border border-slate-700 shadow-md flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-primary animate-spin" />
-                    Point student QR code — auto-scans & plays confirmation sound
+                  <p className="relative z-10 text-xs font-semibold text-slate-100 mt-6 bg-slate-900/90 px-4 py-2 rounded-full border border-slate-700 shadow-xl flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary animate-spin" />
+                    Point student QR code at center target — scans instantly
                   </p>
                 </>
               ) : (
-                <div className="text-slate-400 text-xs space-y-2">
-                  <XCircle className="w-9 h-9 mx-auto text-slate-600" />
-                  <p className="font-semibold text-slate-300">
+                <div className="text-slate-400 text-xs space-y-2.5">
+                  <XCircle className="w-12 h-12 mx-auto text-slate-600" />
+                  <p className="font-semibold text-slate-300 text-base">
                     {sessionActive ? "Camera scanner is paused" : "Attendance Session Stopped"}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
                     {sessionActive
-                      ? 'Click "Enable Scanner" above to activate automatic detection.'
+                      ? 'Click "Enable Scanner" above to activate automatic camera recognition.'
                       : 'Click "Start Session" above to activate attendance taking.'}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* SCAN TOKEN MANUAL INPUT FALLBACK */}
+            {/* SCAN TOKEN MANUAL INPUT FALLBACK + FILE UPLOAD + INSTANT DEMO SCAN */}
             <form onSubmit={handleScanTokenSubmit} className="space-y-2">
-              <div className="flex gap-2">
+              {/* Hidden file input for QR image uploading */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder={
                     sessionActive
-                      ? "Manual QR token verification (e.g. STU-SACHIN-4821)..."
+                      ? "Manual QR token verification (e.g. S16-SACH-48)..."
                       : "Session is stopped. Click Start Session above."
                   }
                   value={qrInputToken}
                   onChange={(e) => setQrInputToken(e.target.value)}
-                  className="text-xs font-mono h-9.5"
+                  className="text-xs font-mono h-10 flex-1"
                   disabled={!sessionActive}
                 />
                 <Button
                   type="submit"
                   disabled={!sessionActive || loading || !qrInputToken.trim()}
-                  className="gap-1.5 text-xs font-semibold h-9.5 px-4"
+                  className="gap-1.5 text-xs font-semibold h-10 px-4 shrink-0 cursor-pointer"
                 >
                   <Scan className="h-4 w-4" /> Verify
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!sessionActive || loading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-1.5 text-xs font-semibold h-10 px-3 shrink-0 cursor-pointer"
+                  title="Upload a QR code image or screenshot from your device"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Upload Image
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!sessionActive || loading}
+                  onClick={() => {
+                    const todayEmail = localStorage.getItem("sa.email") || "sachin@college.edu";
+                    const demoToken = getDailyStudentToken(todayEmail);
+                    processScannedToken(demoToken, false);
+                  }}
+                  className="gap-1.5 text-xs font-semibold h-10 px-3 shrink-0 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary cursor-pointer"
+                  title="Trigger a simulated student scan for immediate testing"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> Test Scan
                 </Button>
               </div>
             </form>
