@@ -428,20 +428,23 @@ function AdminAttendanceView() {
           const latest = report[0];
           setScanResult((prev) => {
             if (!prev) {
+              const usnFromDevice = latest.deviceInfo?.startsWith("USN: ")
+                ? latest.deviceInfo.replace("USN: ", "")
+                : "1RA21CS001";
               return {
                 success: true,
-                studentName: latest.userName || latest.userEmail,
-                studentEmail: latest.userEmail,
-                studentId: "STU" + latest.id,
-                department: selectedDepartment,
+                studentName: latest.userName || latest.userEmail || "Student User",
+                studentEmail: latest.userEmail || "student@college.edu",
+                studentId: usnFromDevice,
+                department: selectedDepartment || "Computer Science",
                 section: "Section A",
                 batchCode: selectedBatchCode || "BATCH-01",
-                subject: latest.subjectName || selectedSubject,
+                subject: latest.subjectName || selectedSubject || "Subject Session",
                 trainer: selectedTrainer || "Faculty Lead",
                 date: latest.date || currentDateStr,
                 time: latest.markedAt
-                  ? new Date(latest.markedAt).toLocaleTimeString()
-                  : new Date().toLocaleTimeString(),
+                  ? new Date(latest.markedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+                  : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
                 rawToken: getDailyStudentToken(latest.userEmail || latest.userName),
               };
             }
@@ -487,7 +490,6 @@ function AdminAttendanceView() {
   // Frame processing and automatic QR decoder
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isScanningRef = useRef<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const lastScannedTokenRef = useRef<string>("");
   const lastScanTimestampRef = useRef<number>(0);
 
@@ -526,18 +528,24 @@ function AdminAttendanceView() {
       const matchedStudent = studentsList.find(
         (s: any) =>
           s.email?.toLowerCase() === response.userEmail?.toLowerCase() ||
-          s.name?.toLowerCase() === response.userName?.toLowerCase(),
+          s.name?.toLowerCase() === response.userName?.toLowerCase() ||
+          (s.usn && response.deviceInfo?.includes(s.usn)),
       );
+
+      const studentUSN =
+        matchedStudent?.usn ||
+        (response.deviceInfo?.startsWith("USN: ") ? response.deviceInfo.replace("USN: ", "") : null) ||
+        `1RA21CS0${String(response.id).slice(-2)}`;
 
       const newResult = {
         success: true,
         studentName: response.userName || matchedStudent?.name || "Student User",
         studentEmail: response.userEmail || matchedStudent?.email || "student@college.edu",
-        studentId: matchedStudent?.usn || "STU" + (response.id || Date.now()),
-        department: matchedStudent?.department || selectedDepartment,
+        studentId: studentUSN,
+        department: matchedStudent?.department || selectedDepartment || "Computer Science",
         section: matchedStudent?.section || "Section A",
         batchCode: selectedBatchCode || "BATCH-01",
-        subject: response.subjectName || selectedSubject,
+        subject: response.subjectName || selectedSubject || "Subject Session",
         trainer: selectedTrainer || "Faculty Lead",
         date: currentDateStr,
         time: nowTime,
@@ -569,43 +577,6 @@ function AdminAttendanceView() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!sessionActive) {
-      toast.error("Please click 'Start Session' first before scanning.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imgData.data, imgData.width, imgData.height, {
-            inversionAttempts: "attemptBoth",
-          });
-          if (code && code.data && code.data.trim()) {
-            processScannedToken(code.data.trim(), true);
-          } else {
-            toast.error("Could not find a valid QR code in the uploaded image. Please ensure the QR code is clear.");
-            playScanErrorSound();
-          }
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
   };
 
   // High-Performance Camera QR Detection Loop (Hardware BarcodeDetector + Dual-Stage Center-Crop jsQR)
@@ -1160,18 +1131,9 @@ function AdminAttendanceView() {
               )}
             </div>
 
-            {/* SCAN TOKEN MANUAL INPUT FALLBACK + FILE UPLOAD + INSTANT DEMO SCAN */}
+            {/* SCAN TOKEN MANUAL INPUT FALLBACK */}
             <form onSubmit={handleScanTokenSubmit} className="space-y-2">
-              {/* Hidden file input for QR image uploading */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex gap-2">
                 <Input
                   placeholder={
                     sessionActive
@@ -1186,33 +1148,9 @@ function AdminAttendanceView() {
                 <Button
                   type="submit"
                   disabled={!sessionActive || loading || !qrInputToken.trim()}
-                  className="gap-1.5 text-xs font-semibold h-10 px-4 shrink-0 cursor-pointer"
+                  className="gap-1.5 text-xs font-semibold h-10 px-5 shrink-0 cursor-pointer"
                 >
-                  <Scan className="h-4 w-4" /> Verify
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!sessionActive || loading}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="gap-1.5 text-xs font-semibold h-10 px-3 shrink-0 cursor-pointer"
-                  title="Upload a QR code image or screenshot from your device"
-                >
-                  <Upload className="h-3.5 w-3.5" /> Upload Image
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!sessionActive || loading}
-                  onClick={() => {
-                    const todayEmail = localStorage.getItem("sa.email") || "sachin@college.edu";
-                    const demoToken = getDailyStudentToken(todayEmail);
-                    processScannedToken(demoToken, false);
-                  }}
-                  className="gap-1.5 text-xs font-semibold h-10 px-3 shrink-0 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary cursor-pointer"
-                  title="Trigger a simulated student scan for immediate testing"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-primary" /> Test Scan
+                  <Scan className="h-4 w-4" /> Verify Token
                 </Button>
               </div>
             </form>

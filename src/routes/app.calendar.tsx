@@ -3,17 +3,8 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +25,6 @@ import {
   CalendarClock,
   UserCheck,
   Users,
-  Search,
   Sparkles,
   TrendingUp,
   Award,
@@ -116,7 +106,6 @@ function CalendarPage() {
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null);
   const [selectedDateObj, setSelectedDateObj] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalSearchQuery, setModalSearchQuery] = useState("");
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -223,7 +212,6 @@ function CalendarPage() {
     const str = formatDateStr(d);
     setSelectedDateStr(str);
     setSelectedDateObj(d);
-    setModalSearchQuery("");
     setIsModalOpen(true);
   };
 
@@ -332,14 +320,7 @@ function CalendarPage() {
             const matchesSec =
               selectedSection === "ALL" ||
               s.section.toLowerCase() === selectedSection.toLowerCase();
-            const q = modalSearchQuery.toLowerCase();
-            const matchesSearch =
-              s.name.toLowerCase().includes(q) ||
-              s.email.toLowerCase().includes(q) ||
-              s.usn.toLowerCase().includes(q) ||
-              s.department.toLowerCase().includes(q) ||
-              s.section.toLowerCase().includes(q);
-            return matchesSec && matchesSearch;
+            return matchesSec;
           });
 
         const presentCount = scannedStudents.filter((s) => s.status === "PRESENT").length;
@@ -372,7 +353,6 @@ function CalendarPage() {
     students,
     selectedDept,
     selectedSection,
-    modalSearchQuery,
   ]);
 
   // Overall totals for selected date modal
@@ -739,7 +719,7 @@ function CalendarPage() {
             </Card>
           </div>
 
-          {/* FUTURE DATE NOTICE OR BATCH-WISE DETAILED BREAKDOWN */}
+          {/* FUTURE DATE NOTICE OR BATCH-WISE ATTENDANCE OVERVIEW */}
           {isFutureDate ? (
             <div className="py-12 px-6 text-center space-y-3 border border-dashed rounded-xl bg-card my-2">
               <CalendarClock className="mx-auto h-12 w-12 text-amber-500/70 animate-pulse" />
@@ -760,29 +740,18 @@ function CalendarPage() {
               </Badge>
             </div>
           ) : (
-            <div className="space-y-4 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="h-4 w-4 text-primary" /> Active Batches on {selectedDateStr}
-                </h3>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search student roster..."
-                    value={modalSearchQuery}
-                    onChange={(e) => setModalSearchQuery(e.target.value)}
-                    className="h-7.5 pl-8 text-xs"
-                  />
-                </div>
-              </div>
+            <div className="space-y-3 pt-2">
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="h-4 w-4 text-primary" /> Batches Taking Attendance on {selectedDateStr}
+              </h3>
 
               {dateBatchSessions.length > 0 ? (
                 dateBatchSessions.map((b) => (
                   <Card
                     key={b.batchId}
-                    className="border border-border/60 shadow-xs overflow-hidden"
+                    className="border border-border/60 shadow-xs overflow-hidden bg-card"
                   >
-                    <CardHeader className="bg-muted/30 p-4 border-b border-border/40">
+                    <div className="p-4 space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
@@ -816,114 +785,37 @@ function CalendarPage() {
                           <div className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
                             {b.presentStudents} / {b.totalStudents} Present
                           </div>
-                          <div className="text-xs text-muted-foreground font-mono">
+                          <div className="text-xs font-bold font-mono text-foreground">
                             {b.percentage}% Attendance Rate
                           </div>
                         </div>
                       </div>
-                      <Progress value={b.percentage} className="h-1.5 mt-3 bg-muted rounded-full" />
-                    </CardHeader>
 
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                          <span>Student Attendance Roster:</span>
-                          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
-                            ✓ {b.presentStudents} Present | ✕ {b.absentStudents} Absent
-                          </span>
+                      <div className="space-y-1">
+                        <Progress
+                          value={b.percentage}
+                          className={cn(
+                            "h-2 bg-muted rounded-full",
+                            b.percentage >= 85
+                              ? "[&>div]:bg-emerald-600"
+                              : b.percentage >= 70
+                                ? "[&>div]:bg-amber-500"
+                                : "[&>div]:bg-rose-500"
+                          )}
+                        />
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                          <span>✓ {b.presentStudents} Attended</span>
+                          <span>✕ {b.absentStudents} Absent</span>
+                          <span>Total: {b.totalStudents} Students</span>
                         </div>
-
-                        {b.scannedStudents.length > 0 ? (
-                          <div className="w-full overflow-x-auto max-h-56 overflow-y-auto">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="text-xs">Student</TableHead>
-                                  <TableHead className="text-xs">USN / ID</TableHead>
-                                  <TableHead className="text-xs">Department</TableHead>
-                                  <TableHead className="text-xs font-bold text-foreground">
-                                    Section
-                                  </TableHead>
-                                  <TableHead className="text-xs">Time Marked</TableHead>
-                                  <TableHead className="text-right text-xs font-bold text-foreground">
-                                    Presence Status
-                                  </TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {b.scannedStudents.map((s, idx) => {
-                                  const initials = s.name
-                                    ? s.name
-                                        .split(" ")
-                                        .map((n: string) => n[0])
-                                        .join("")
-                                        .slice(0, 2)
-                                        .toUpperCase()
-                                    : "ST";
-                                  return (
-                                    <TableRow
-                                      key={idx}
-                                      className="hover:bg-muted/40 transition-colors"
-                                    >
-                                      <TableCell className="text-xs font-semibold text-foreground">
-                                        <div className="flex items-center gap-2">
-                                          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary text-[10px] font-bold font-mono">
-                                            {initials}
-                                          </div>
-                                          <div className="min-w-0">
-                                            <div className="font-bold truncate">{s.name}</div>
-                                            <div className="text-[10px] text-muted-foreground truncate">
-                                              {s.email}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-xs font-mono text-primary font-bold">
-                                        {s.usn}
-                                      </TableCell>
-                                      <TableCell className="text-xs text-muted-foreground">
-                                        {s.department}
-                                      </TableCell>
-                                      <TableCell className="text-xs">
-                                        <Badge
-                                          variant="outline"
-                                          className="font-mono text-[11px] font-bold bg-primary/10 text-primary border-primary/30 px-2 py-0.5"
-                                        >
-                                          {s.section}
-                                        </Badge>
-                                      </TableCell>
-                                      <TableCell className="text-xs font-mono text-muted-foreground">
-                                        {s.time}
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        <Badge
-                                          className={`text-xs font-bold px-2.5 py-0.5 border-none shadow-xs ${
-                                            s.status === "PRESENT"
-                                              ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                              : "bg-rose-600 hover:bg-rose-700 text-white"
-                                          }`}
-                                        >
-                                          {s.status === "PRESENT" ? "PRESENT ✓" : "ABSENT ✕"}
-                                        </Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        ) : (
-                          <div className="py-6 text-center text-xs text-muted-foreground italic border border-dashed rounded-lg">
-                            No students match the current filter.
-                          </div>
-                        )}
                       </div>
-                    </CardContent>
+                    </div>
                   </Card>
                 ))
               ) : (
-                <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl">
-                  No batch sessions found for the selected department on this date.
+                <div className="py-8 text-center text-xs text-muted-foreground border border-dashed rounded-xl space-y-1">
+                  <p className="font-semibold text-foreground">No Attendance Records on This Date</p>
+                  <p>No batch sessions recorded attendance for the selected filters.</p>
                 </div>
               )}
             </div>

@@ -21,7 +21,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { students } from "@/lib/mock-data";
 import { useApp } from "@/lib/app-context";
 import { useState, useEffect } from "react";
 import {
@@ -112,7 +111,7 @@ function StudentsPage() {
     };
   }, []);
 
-  const totalRegisteredStudents = studentsList.length > 0 ? studentsList.length : 1;
+  const totalRegisteredStudents = studentsList.length;
 
   const handleOpenHistory = (batch: any) => {
     setSelectedBatch(batch);

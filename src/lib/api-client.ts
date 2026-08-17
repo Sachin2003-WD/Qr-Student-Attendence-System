@@ -353,6 +353,35 @@ export const DEFAULT_LAB_ATTENDANCE: LabAttendanceRecord[] = [];
 export const DEFAULT_STUDENTS: any[] = [];
 export const DEFAULT_ADMINS: any[] = [];
 
+// Auto-purge legacy mock data from browser storage on initialization
+if (typeof window !== "undefined" && window.localStorage) {
+  try {
+    if (localStorage.getItem("sa.v2_clean") !== "true") {
+      const keysToRemove = [
+        "sa.token",
+        "sa.role",
+        "sa.email",
+        "sa.name",
+        "sa.usn",
+        "sa.department",
+        "sa.registered_students",
+        "sa.registered_admins",
+        "sa.batches",
+        "sa.attendance_records",
+        "sa.labs",
+        "sa.lab_attendance",
+        "sa.last_scanned_payload",
+        "sa.last_scanned_student",
+        "mm.token",
+        "mm.role",
+        "mm.email",
+      ];
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem("sa.v2_clean", "true");
+    }
+  } catch {}
+}
+
 // Local storage attendance helper
 function getLocalAttendanceRecords(): AttendanceResponse[] {
   try {
@@ -462,16 +491,28 @@ function getLocalStudents(): any[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
+        const localAdmins = getLocalAdmins();
+        const adminEmails = new Set(
+          localAdmins.map((a) => (a.email || "").toLowerCase()).filter(Boolean),
+        );
+        const curRole = (getItem("sa.role") || "").toLowerCase();
+        const curEmail = (getItem("sa.email") || "").toLowerCase();
+        if (curRole === "admin" && curEmail) {
+          adminEmails.add(curEmail);
+        }
+
         return parsed.filter(
           (s) =>
-            ![
+            s.role !== "ADMIN" &&
+            !adminEmails.has(s.email?.toLowerCase()) &&
+            (![
               "1RA21CS001",
               "1RA21CS003",
               "1RA21CS004",
               "1RA21CS005",
               "1RA21ME006",
               "1RA21CV007",
-            ].includes(s.usn) || s.isUserCreated,
+            ].includes(s.usn) || s.isUserCreated),
         );
       }
     }
@@ -647,9 +688,36 @@ export const api = {
     removeItem("sa.role");
     removeItem("sa.email");
     removeItem("sa.name");
+    removeItem("sa.usn");
+    removeItem("sa.department");
     removeItem("mm.token");
     removeItem("mm.role");
     removeItem("mm.email");
+  },
+
+  clearAllData: (): void => {
+    const keysToRemove = [
+      "sa.token",
+      "sa.role",
+      "sa.email",
+      "sa.name",
+      "sa.usn",
+      "sa.department",
+      "sa.registered_students",
+      "sa.registered_admins",
+      "sa.batches",
+      "sa.attendance_records",
+      "sa.labs",
+      "sa.lab_attendance",
+      "sa.last_scanned_payload",
+      "sa.last_scanned_student",
+      "mm.token",
+      "mm.role",
+      "mm.email",
+    ];
+    for (const k of keysToRemove) {
+      removeItem(k);
+    }
   },
 
   checkHealth: async (): Promise<{ success: boolean; message: string }> => {
@@ -834,105 +902,46 @@ export const api = {
   },
 
   registerStudent: async (payload: any): Promise<AuthResponse> => {
-    const studentName = payload.name || (payload.email ? payload.email.split("@")[0] : "Student");
-    const usnVal = payload.usn || `1RA21CS00${Math.floor(Math.random() * 90 + 10)}`;
-    saveLocalStudent({
+    const cleanEmail = (payload.email || "").trim().toLowerCase();
+    const studentName = payload.name?.trim() || "Student";
+    const usnVal = payload.usn?.trim().toUpperCase() || `USN-${Date.now().toString().slice(-4)}`;
+    
+    // Check if already registered locally
+    const existingStudents = getLocalStudents();
+    const duplicate = existingStudents.find((s) => s.email.toLowerCase() === cleanEmail);
+    if (duplicate && duplicate.isUserCreated) {
+      // update or throw
+    }
+
+    const localRecord = {
+      id: Date.now(),
       name: studentName,
-      email: payload.email,
+      email: cleanEmail,
       usn: usnVal,
-      phone: payload.phone || "9876543210",
-    });
+      password: payload.password,
+      department: payload.department || "Computer Science",
+      semester: payload.semester || 1,
+      section: payload.section || "A",
+      phone: payload.phone || "",
+      isUserCreated: true,
+    };
+    saveLocalStudent(localRecord);
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/student/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await handleResponse<AuthResponse>(res);
-      const token = data.token || data.accessToken || `STUDENT-JWT-${Date.now()}`;
-      setItem("sa.token", token);
-      setItem("sa.role", "student");
-      setItem("sa.email", data.email || payload.email);
-      setItem("sa.name", data.name || studentName);
-      return { ...data, token, role: "STUDENT", email: payload.email, name: studentName };
-    } catch (err: any) {
-      if (
-        err.message &&
-        !err.message.includes("Failed to fetch") &&
-        !err.message.includes("NetworkError") &&
-        !err.message.includes("fetch")
-      ) {
-        throw err;
-      }
-      const token = `STUDENT-JWT-${Date.now()}`;
-      setItem("sa.token", token);
-      setItem("sa.role", "student");
-      setItem("sa.email", payload.email);
-      setItem("sa.name", studentName);
-      return { token, role: "STUDENT", email: payload.email, name: studentName };
-    }
-  },
-
-  registerAdmin: async (payload: any): Promise<AuthResponse> => {
-    const adminName = payload.name || (payload.email ? payload.email.split("@")[0] : "Admin");
-    saveLocalAdmin({ name: adminName, email: payload.email, phone: payload.phone || "9876543210" });
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await handleResponse<AuthResponse>(res);
-      const token = data.token || data.accessToken || `ADMIN-JWT-${Date.now()}`;
-      setItem("sa.token", token);
-      setItem("sa.role", "admin");
-      setItem("sa.email", data.email || payload.email);
-      setItem("sa.name", data.name || adminName);
-      return { ...data, token, role: "ADMIN", email: payload.email, name: adminName };
-    } catch (err: any) {
-      if (
-        err.message &&
-        !err.message.includes("Failed to fetch") &&
-        !err.message.includes("NetworkError") &&
-        !err.message.includes("fetch")
-      ) {
-        throw err;
-      }
-      const token = `ADMIN-JWT-${Date.now()}`;
-      setItem("sa.token", token);
-      setItem("sa.role", "admin");
-      setItem("sa.email", payload.email);
-      setItem("sa.name", adminName);
-      return { token, role: "ADMIN", email: payload.email, name: adminName };
-    }
-  },
-
-  login: async (email: string, pass: string, role: string = "student"): Promise<AuthResponse> => {
-    const roleLower = role.toLowerCase();
-    if (roleLower === "admin") return api.loginAdmin(email, pass);
-    return api.loginStudent(email, pass);
-  },
-
-  loginStudent: async (email: string, pass: string): Promise<AuthResponse> => {
-    const cleanEmail = email.trim().toLowerCase();
-    const studentName = getItem("sa.name") || (cleanEmail ? cleanEmail.split("@")[0] : "Student");
-    saveLocalStudent({ name: studentName, email: cleanEmail, usn: "1RA21CS002" });
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail, password: pass }),
+        body: JSON.stringify({ ...payload, email: cleanEmail, usn: usnVal }),
       });
       const data = await handleResponse<AuthResponse>(res);
       const token = data.token || data.accessToken || `STUDENT-JWT-${Date.now()}`;
       setItem("sa.token", token);
       setItem("sa.role", "student");
       setItem("sa.email", data.email || cleanEmail);
-      if (data.name) setItem("sa.name", data.name);
-      return { ...data, token, role: "STUDENT", email: cleanEmail, name: data.name || studentName };
+      setItem("sa.name", data.name || studentName);
+      setItem("sa.usn", data.usn || usnVal);
+      setItem("sa.department", payload.department || "Computer Science");
+      return { ...data, token, role: "STUDENT", email: cleanEmail, name: studentName, usn: usnVal };
     } catch (err: any) {
       if (
         err.message &&
@@ -947,28 +956,39 @@ export const api = {
       setItem("sa.role", "student");
       setItem("sa.email", cleanEmail);
       setItem("sa.name", studentName);
-      return { token, role: "STUDENT", email: cleanEmail, name: studentName };
+      setItem("sa.usn", usnVal);
+      setItem("sa.department", payload.department || "Computer Science");
+      return { token, role: "STUDENT", email: cleanEmail, name: studentName, usn: usnVal };
     }
   },
 
-  loginAdmin: async (email: string, pass: string): Promise<AuthResponse> => {
-    const cleanEmail = email.trim().toLowerCase();
-    const adminName = getItem("sa.name") || (cleanEmail ? cleanEmail.split("@")[0] : "Admin");
-    saveLocalAdmin({ name: adminName, email: cleanEmail });
+  registerAdmin: async (payload: any): Promise<AuthResponse> => {
+    const cleanEmail = (payload.email || "").trim().toLowerCase();
+    const adminName = payload.name?.trim() || "Administrator";
+
+    const localAdmin = {
+      id: Date.now(),
+      name: adminName,
+      email: cleanEmail,
+      password: payload.password,
+      phone: payload.phone || "",
+      isUserCreated: true,
+    };
+    saveLocalAdmin(localAdmin);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+      const res = await fetch(`${API_BASE_URL}/auth/admin/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail, password: pass }),
+        body: JSON.stringify({ ...payload, email: cleanEmail }),
       });
       const data = await handleResponse<AuthResponse>(res);
       const token = data.token || data.accessToken || `ADMIN-JWT-${Date.now()}`;
       setItem("sa.token", token);
       setItem("sa.role", "admin");
       setItem("sa.email", data.email || cleanEmail);
-      if (data.name) setItem("sa.name", data.name);
-      return { ...data, token, role: "ADMIN", email: cleanEmail, name: data.name || adminName };
+      setItem("sa.name", data.name || adminName);
+      return { ...data, token, role: "ADMIN", email: cleanEmail, name: adminName };
     } catch (err: any) {
       if (
         err.message &&
@@ -984,6 +1004,137 @@ export const api = {
       setItem("sa.email", cleanEmail);
       setItem("sa.name", adminName);
       return { token, role: "ADMIN", email: cleanEmail, name: adminName };
+    }
+  },
+
+  login: async (email: string, pass: string, role: string = "student"): Promise<AuthResponse> => {
+    const roleLower = role.toLowerCase();
+    if (roleLower === "admin") return api.loginAdmin(email, pass);
+    return api.loginStudent(email, pass);
+  },
+
+  loginStudent: async (email: string, pass: string): Promise<AuthResponse> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    if (!cleanEmail || !cleanPass) {
+      throw new Error("Please enter both your email address and password.");
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+      });
+      const data = await handleResponse<AuthResponse>(res);
+      const token = data.token || data.accessToken || `STUDENT-JWT-${Date.now()}`;
+      setItem("sa.token", token);
+      setItem("sa.role", "student");
+      setItem("sa.email", data.email || cleanEmail);
+      if (data.name) setItem("sa.name", data.name);
+      if (data.usn) setItem("sa.usn", data.usn);
+      return { ...data, token, role: "STUDENT", email: cleanEmail };
+    } catch (err: any) {
+      // If server responded with an actual HTTP error (400, 401, 404, etc.), strictly reject!
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError") &&
+        !err.message.includes("fetch")
+      ) {
+        throw new Error(err.message || "Invalid student email or password. Please verify your credentials.");
+      }
+
+      // Offline / Local verification fallback: Validate against registered student records strictly
+      const students = getLocalStudents();
+      const matched = students.find((s) => s.email.toLowerCase() === cleanEmail);
+
+      if (!matched) {
+        throw new Error("No student account found for this email address. Please create an account first.");
+      }
+
+      if (!matched.password || matched.password !== cleanPass) {
+        throw new Error("Incorrect password. Please verify your password or use Forgot Password.");
+      }
+
+      const token = `STUDENT-JWT-${Date.now()}`;
+      const studentName = matched.name || cleanEmail.split("@")[0];
+      const studentUsn = matched.usn || "USN";
+      setItem("sa.token", token);
+      setItem("sa.role", "student");
+      setItem("sa.email", cleanEmail);
+      setItem("sa.name", studentName);
+      setItem("sa.usn", studentUsn);
+      if (matched.department) setItem("sa.department", matched.department);
+
+      return {
+        token,
+        role: "STUDENT",
+        email: cleanEmail,
+        name: studentName,
+        usn: studentUsn,
+      };
+    }
+  },
+
+  loginAdmin: async (email: string, pass: string): Promise<AuthResponse> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = pass.trim();
+
+    if (!cleanEmail || !cleanPass) {
+      throw new Error("Please enter both your administrator email and password.");
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+      });
+      const data = await handleResponse<AuthResponse>(res);
+      const token = data.token || data.accessToken || `ADMIN-JWT-${Date.now()}`;
+      setItem("sa.token", token);
+      setItem("sa.role", "admin");
+      setItem("sa.email", data.email || cleanEmail);
+      if (data.name) setItem("sa.name", data.name);
+      return { ...data, token, role: "ADMIN", email: cleanEmail };
+    } catch (err: any) {
+      // If server responded with an actual HTTP error, strictly reject!
+      if (
+        err.message &&
+        !err.message.includes("Failed to fetch") &&
+        !err.message.includes("NetworkError") &&
+        !err.message.includes("fetch")
+      ) {
+        throw new Error(err.message || "Invalid administrator credentials. Please check your email and password.");
+      }
+
+      // Offline / Local verification fallback: Validate against registered admin records strictly
+      const admins = getLocalAdmins();
+      const matched = admins.find((a) => a.email.toLowerCase() === cleanEmail);
+
+      if (!matched) {
+        throw new Error("No administrator account found for this email address. Please register first.");
+      }
+
+      if (!matched.password || matched.password !== cleanPass) {
+        throw new Error("Incorrect administrator password. Please check your credentials.");
+      }
+
+      const token = `ADMIN-JWT-${Date.now()}`;
+      const adminName = matched.name || "Administrator";
+      setItem("sa.token", token);
+      setItem("sa.role", "admin");
+      setItem("sa.email", cleanEmail);
+      setItem("sa.name", adminName);
+
+      return {
+        token,
+        role: "ADMIN",
+        email: cleanEmail,
+        name: adminName,
+      };
     }
   },
 
@@ -1128,17 +1279,19 @@ export const api = {
       }
 
       if (!matchedStudent) {
-        // Search by email prefix (4 chars), handle, or USN
+        // Search by exact email, prefix, handle, USN, or name
         for (const st of localStudents) {
           const emailHandle = st.email ? st.email.split("@")[0].toUpperCase() : "";
           const prefix4 = emailHandle.slice(0, 4);
           const usn = (st.usn || "").toUpperCase();
           const stName = (st.name || "").toUpperCase();
+          const nameFirst4 = stName.split(" ")[0].slice(0, 4);
 
           if (
             (prefix4 && upperToken.includes(prefix4)) ||
             (emailHandle && upperToken.includes(emailHandle)) ||
             (usn && upperToken.includes(usn)) ||
+            (nameFirst4 && upperToken.includes(nameFirst4)) ||
             (stName && upperToken.includes(stName))
           ) {
             matchedStudent = st;
@@ -1147,14 +1300,38 @@ export const api = {
         }
       }
 
-      if (!matchedStudent) {
-        // Match current student if available, else first student
-        const currentEmail = getItem("sa.email");
-        matchedStudent = localStudents.find((s) => s.email === currentEmail) || localStudents[0];
+      // If token is a student daily token formatted as S{day}-{prefix}-{seed}
+      const tokenMatch = upperToken.match(/^S\d{2}-([A-Z0-9]{3,})-?(\d+)?$/);
+      if (!matchedStudent && tokenMatch) {
+        const rawPrefix = tokenMatch[1];
+        const seed = tokenMatch[2] || "01";
+        const cleanName = rawPrefix.charAt(0) + rawPrefix.slice(1).toLowerCase();
+        const dynEmail = `${rawPrefix.toLowerCase()}@college.edu`;
+        const dynUsn = `1RA21CS0${seed}`;
+        matchedStudent = {
+          name: cleanName,
+          email: dynEmail,
+          usn: dynUsn,
+          department: "Computer Science",
+          section: "Section A",
+          isUserCreated: true,
+        };
+        saveLocalStudent(matchedStudent);
       }
 
-      const email = matchedStudent?.email || getItem("sa.email") || "sachin@college.edu";
-      const name = matchedStudent?.name || getItem("sa.name") || "Sachin C K";
+      if (!matchedStudent) {
+        // Check current session user if available
+        const currentEmail = getItem("sa.email");
+        matchedStudent = localStudents.find((s) => s.email === currentEmail) || {
+          name: "Student",
+          email: "student@college.edu",
+          usn: "1RA21CS001",
+        };
+      }
+
+      const email = matchedStudent?.email || "student@college.edu";
+      const name = matchedStudent?.name || "Student";
+      const usn = matchedStudent?.usn || "1RA21CS001";
       const todayStr = new Date().toISOString().split("T")[0];
       const nowIso = new Date().toISOString();
       const activeSessions = getRealtimeSubjectSessions();
@@ -1176,7 +1353,7 @@ export const api = {
         subjectName: matchedSubj.name,
         sessionTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         recordedByFacultyEmail: matchedSubj.faculty || "Faculty Lead",
-        deviceInfo: typeof navigator !== "undefined" ? navigator.userAgent : "Browser",
+        deviceInfo: `USN: ${usn}`,
       };
 
       saveLocalAttendanceRecord(localRecord);
@@ -1193,20 +1370,25 @@ export const api = {
     } catch {
       const localBatches = getLocalBatches();
       const matched = localBatches.find((b) => b.id === batchId) || localBatches[0] || {};
+      const allRecords = getLocalAttendanceRecords();
+      const batchRecords = allRecords.filter((r) => r.subjectCode === matched.batchCode);
+      const presentCount = batchRecords.filter((r) => r.status === "PRESENT" || r.status === "LATE").length;
+      const totalClasses = batchRecords.length;
+      const pct = totalClasses > 0 ? (presentCount / totalClasses) * 100 : 0;
       return {
         batchId,
-        batchCode: matched.batchCode || "CSE-2026-A",
-        batchName: matched.name || "Computer Science Batch A",
-        subjectName: matched.subjectName || "Data Structures",
-        branchName: matched.branch || "Main Campus",
-        trainerName: matched.trainerName || "Faculty Lead",
-        classTiming: matched.classTiming || "09:00 AM",
-        startDate: matched.startDate || "01-Aug-2026",
-        totalClasses: 17,
-        classesAttended: 15,
-        classesAbsent: 2,
-        attendancePercentage: 88.24,
-        records: getLocalAttendanceRecords(),
+        batchCode: matched.batchCode || "",
+        batchName: matched.name || "",
+        subjectName: matched.subjectName || "",
+        branchName: matched.branch || "",
+        trainerName: matched.trainerName || "",
+        classTiming: matched.classTiming || "",
+        startDate: matched.startDate || "",
+        totalClasses,
+        classesAttended: presentCount,
+        classesAbsent: totalClasses - presentCount,
+        attendancePercentage: Math.round(pct * 100) / 100,
+        records: batchRecords,
       };
     }
   },
@@ -1223,20 +1405,25 @@ export const api = {
     } catch {
       const localBatches = getLocalBatches();
       const matched = localBatches.find((b) => b.id === batchId) || localBatches[0] || {};
+      const allRecords = getLocalAttendanceRecords();
+      const batchRecords = allRecords.filter((r) => r.subjectCode === matched.batchCode);
+      const presentCount = batchRecords.filter((r) => r.status === "PRESENT" || r.status === "LATE").length;
+      const totalClasses = batchRecords.length;
+      const pct = totalClasses > 0 ? (presentCount / totalClasses) * 100 : 0;
       return {
         batchId,
-        batchCode: matched.batchCode || "CSE-2026-A",
-        batchName: matched.name || "Computer Science Batch A",
-        subjectName: matched.subjectName || "Data Structures",
-        branchName: matched.branch || "Main Campus",
-        trainerName: matched.trainerName || "Faculty Lead",
-        classTiming: matched.classTiming || "09:00 AM",
-        startDate: matched.startDate || "01-Aug-2026",
-        totalClasses: 17,
-        classesAttended: 15,
-        classesAbsent: 2,
-        attendancePercentage: 88.24,
-        records: getLocalAttendanceRecords(),
+        batchCode: matched.batchCode || "",
+        batchName: matched.name || "",
+        subjectName: matched.subjectName || "",
+        branchName: matched.branch || "",
+        trainerName: matched.trainerName || "",
+        classTiming: matched.classTiming || "",
+        startDate: matched.startDate || "",
+        totalClasses,
+        classesAttended: presentCount,
+        classesAbsent: totalClasses - presentCount,
+        attendancePercentage: Math.round(pct * 100) / 100,
+        records: batchRecords,
       };
     }
   },
@@ -1413,10 +1600,11 @@ export const api = {
     const localAdmins = getLocalAdmins();
     const map = new Map<string, any>();
 
-    // 1. Always include active logged in admin
-    const activeEmail = getItem("sa.email") || "admin@mentormatrix.com";
-    const activeName = getItem("sa.name") || "System Administrator";
-    if (activeEmail) {
+    // 1. Include active logged in admin if role is admin
+    const activeEmail = getItem("sa.email");
+    const activeRole = (getItem("sa.role") || "").toLowerCase();
+    const activeName = getItem("sa.name") || "Administrator";
+    if (activeEmail && activeRole === "admin") {
       map.set(activeEmail.toLowerCase(), {
         id: 1,
         name: activeName,
@@ -1546,7 +1734,20 @@ export const api = {
   },
 
   getStudents: async (page = 0, size = 100): Promise<any[]> => {
-    const localList = getLocalStudents();
+    const localAdmins = getLocalAdmins();
+    const adminEmails = new Set(
+      localAdmins.map((a) => (a.email || "").toLowerCase()).filter(Boolean),
+    );
+    const curRole = (getItem("sa.role") || "").toLowerCase();
+    const curEmail = (getItem("sa.email") || "").toLowerCase();
+    if (curRole === "admin" && curEmail) {
+      adminEmails.add(curEmail);
+    }
+
+    const localList = getLocalStudents().filter(
+      (s) => s.role !== "ADMIN" && !adminEmails.has(s.email?.toLowerCase()),
+    );
+
     try {
       const res = await fetch(`${API_BASE_URL}/admin/students?page=${page}&size=${size}`, {
         headers: getAuthHeader(),
@@ -1559,7 +1760,9 @@ export const api = {
           merged.push(loc);
         }
       }
-      return merged;
+      return merged.filter(
+        (s) => s.role !== "ADMIN" && !adminEmails.has(s.email?.toLowerCase()),
+      );
     } catch {
       return localList;
     }

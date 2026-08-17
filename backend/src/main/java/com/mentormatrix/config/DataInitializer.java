@@ -49,10 +49,33 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         fixDatabaseSchema();
+        cleanExistingUserData();
         seedDepartments();
-        seedCoursesAndBatches();
-        seedDefaultAdmin();
-        seedDefaultStudent();
+    }
+
+    private void cleanExistingUserData() {
+        try {
+            log.info("Cleaning all existing student, admin, and attendance records from database...");
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+            try { jdbcTemplate.execute("DELETE FROM attendance_records"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM attendance"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM lab_attendance"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM refresh_tokens"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM otps"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM notifications"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM students"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM admins"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM users"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM batches"); } catch (Exception ignored) {}
+            try { jdbcTemplate.execute("DELETE FROM courses"); } catch (Exception ignored) {}
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+            log.info("Database user and student/admin tables successfully cleaned.");
+        } catch (Exception e) {
+            log.warn("Database cleanup notice: {}", e.getMessage());
+            try {
+                jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+            } catch (Exception ignored) {}
+        }
     }
 
     private void fixDatabaseSchema() {
