@@ -521,8 +521,24 @@ function getLocalStudents(): any[] {
 }
 
 function saveLocalStudent(student: any): void {
-  const existing = getLocalStudents();
-  const updated = [{ ...student, isUserCreated: true }, ...existing.filter((s) => s.email !== student.email)];
+  const raw = getItem("sa.registered_students");
+  let list: any[] = [];
+  try {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    }
+  } catch {}
+  const cleanEmail = (student.email || "").toLowerCase();
+  const cleanUsn = (student.usn || "").toUpperCase();
+  const updated = [
+    { ...student, isUserCreated: true },
+    ...list.filter(
+      (s) =>
+        (s.email || "").toLowerCase() !== cleanEmail &&
+        (!cleanUsn || (s.usn || "").toUpperCase() !== cleanUsn),
+    ),
+  ];
   setItem("sa.registered_students", JSON.stringify(updated));
 }
 
@@ -614,8 +630,19 @@ function getLocalAdmins(): any[] {
 }
 
 function saveLocalAdmin(admin: any): void {
-  const existing = getLocalAdmins();
-  const updated = [admin, ...existing.filter((a) => a.email !== admin.email)];
+  const raw = getItem("sa.registered_admins");
+  let list: any[] = [];
+  try {
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    }
+  } catch {}
+  const cleanEmail = (admin.email || "").toLowerCase();
+  const updated = [
+    { ...admin, isUserCreated: true },
+    ...list.filter((a) => (a.email || "").toLowerCase() !== cleanEmail),
+  ];
   setItem("sa.registered_admins", JSON.stringify(updated));
 }
 
@@ -737,14 +764,31 @@ export const api = {
     const role = (getItem("sa.role") || getItem("mm.role") || "student").toLowerCase();
     const email = getItem("sa.email") || "user@college.edu";
     const name = getItem("sa.name") || email.split("@")[0] || "User";
+    const usn = getItem("sa.usn") || "";
     try {
       const endpoint = role === "admin" ? "/admin/profile" : "/student/profile";
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: getAuthHeader(),
       });
-      return await handleResponse(res);
+      const data = await handleResponse<any>(res);
+      if (data && data.usn) {
+        setItem("sa.usn", data.usn);
+      }
+      return data;
     } catch {
-      return { name, email, role, department: "Computer Science", semester: 5, section: "A" };
+      const localStudents = getLocalStudents();
+      const matched = localStudents.find((s) => s.email?.toLowerCase() === email.toLowerCase());
+      const studentUsn = matched?.usn || usn;
+      if (studentUsn) setItem("sa.usn", studentUsn);
+      return {
+        name: matched?.name || name,
+        email,
+        role,
+        usn: studentUsn,
+        department: matched?.department || "Computer Science",
+        semester: matched?.semester || 5,
+        section: matched?.section || "A",
+      };
     }
   },
 
@@ -754,11 +798,16 @@ export const api = {
     phone?: string;
     department?: string;
   }): Promise<any> => {
+    const role = (getItem("sa.role") || getItem("mm.role") || "student").toLowerCase();
+    const endpoint = role === "admin" ? "/admin/profile" : "/student/profile";
     if (payload.name) {
       setItem("sa.name", payload.name);
     }
+    if (payload.email) {
+      setItem("sa.email", payload.email);
+    }
     try {
-      const res = await fetch(`${API_BASE_URL}/student/profile`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", ...getAuthHeader() },
         body: JSON.stringify(payload),
@@ -807,13 +856,11 @@ export const api = {
       return {
         success: true,
         message: data?.message || `A 6-digit verification OTP code has been sent to ${cleanEmail}.`,
-        otp: generatedOtp,
       };
     } catch {
       return {
         success: true,
         message: `A 6-digit verification OTP code has been sent to ${cleanEmail}. Please check your inbox.`,
-        otp: generatedOtp,
       };
     }
   },
@@ -835,6 +882,7 @@ export const api = {
     const inputOtp = payload.otp.trim();
 
     let serverSuccess = false;
+    let serverError: string | null = null;
     try {
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
@@ -849,9 +897,11 @@ export const api = {
       await handleResponse(res);
       serverSuccess = true;
     } catch (err: any) {
-      // If server failed due to network or offline mode, verify strictly against dispatched OTP
-      if (storedOtp && inputOtp !== storedOtp && !serverSuccess) {
-        throw new Error("Invalid or expired OTP code. Please check the OTP sent to your email.");
+      serverError = err.message;
+      if (storedOtp && inputOtp === storedOtp) {
+        serverSuccess = true;
+      } else {
+        throw new Error(serverError || "Invalid or expired OTP code. Please check your email and try again.");
       }
     }
 
@@ -880,7 +930,7 @@ export const api = {
           name: cleanEmail.split("@")[0] || "Student",
           email: cleanEmail,
           password: payload.newPassword,
-          usn: "1RA21CS002",
+          usn: getItem("sa.usn") || `USN-${Date.now().toString().slice(-4)}`,
         });
       }
     }
@@ -1013,19 +1063,20 @@ export const api = {
     return api.loginStudent(email, pass);
   },
 
-  loginStudent: async (email: string, pass: string): Promise<AuthResponse> => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPass = pass.trim();
+  loginStudent: async (identifier: string, pass: string): Promise<AuthResponse> => {
+    const rawInput = (identifier || "").trim();
+    const cleanEmail = rawInput.toLowerCase();
+    const cleanPass = (pass || "").trim();
 
-    if (!cleanEmail || !cleanPass) {
-      throw new Error("Please enter both your email address and password.");
+    if (!rawInput || !cleanPass) {
+      throw new Error("Please enter both your email address (or USN) and password.");
     }
 
     try {
       const res = await fetch(`${API_BASE_URL}/auth/student/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+        body: JSON.stringify({ email: rawInput, password: cleanPass }),
       });
       const data = await handleResponse<AuthResponse>(res);
       const token = data.token || data.accessToken || `STUDENT-JWT-${Date.now()}`;
@@ -1034,55 +1085,89 @@ export const api = {
       setItem("sa.email", data.email || cleanEmail);
       if (data.name) setItem("sa.name", data.name);
       if (data.usn) setItem("sa.usn", data.usn);
-      return { ...data, token, role: "STUDENT", email: cleanEmail };
+      return { ...data, token, role: "STUDENT", email: data.email || cleanEmail };
     } catch (err: any) {
-      // If server responded with an actual HTTP error (400, 401, 404, etc.), strictly reject!
+      // Local verification fallback: Validate against registered student records strictly
+      const rawStudents = getItem("sa.registered_students");
+      let students: any[] = [];
+      try {
+        if (rawStudents) students = JSON.parse(rawStudents);
+      } catch {}
+      if (!Array.isArray(students)) students = [];
+
+      const matched = students.find(
+        (s) =>
+          (s.email || "").toLowerCase() === cleanEmail ||
+          (s.usn || "").toUpperCase() === rawInput.toUpperCase() ||
+          (s.name || "").toLowerCase() === cleanEmail,
+      );
+
+      if (matched) {
+        if (matched.password && matched.password !== cleanPass) {
+          throw new Error("Incorrect password. Please check your credentials or use Forgot Password.");
+        }
+
+        const token = `STUDENT-JWT-${Date.now()}`;
+        const studentName = matched.name || cleanEmail.split("@")[0];
+        const studentUsn = matched.usn || rawInput.toUpperCase();
+        setItem("sa.token", token);
+        setItem("sa.role", "student");
+        setItem("sa.email", matched.email || cleanEmail);
+        setItem("sa.name", studentName);
+        setItem("sa.usn", studentUsn);
+        if (matched.department) setItem("sa.department", matched.department);
+
+        return {
+          token,
+          role: "STUDENT",
+          email: matched.email || cleanEmail,
+          name: studentName,
+          usn: studentUsn,
+        };
+      }
+
+      // Check if admin is trying to login via student portal
+      const rawAdmins = getItem("sa.registered_admins");
+      let admins: any[] = [];
+      try {
+        if (rawAdmins) admins = JSON.parse(rawAdmins);
+      } catch {}
+      if (Array.isArray(admins)) {
+        const matchedAdmin = admins.find((a) => (a.email || "").toLowerCase() === cleanEmail);
+        if (matchedAdmin && matchedAdmin.password === cleanPass) {
+          const token = `ADMIN-JWT-${Date.now()}`;
+          setItem("sa.token", token);
+          setItem("sa.role", "admin");
+          setItem("sa.email", matchedAdmin.email || cleanEmail);
+          setItem("sa.name", matchedAdmin.name || "Administrator");
+          return {
+            token,
+            role: "ADMIN",
+            email: matchedAdmin.email || cleanEmail,
+            name: matchedAdmin.name || "Administrator",
+          };
+        }
+      }
+
       if (
         err.message &&
         !err.message.includes("Failed to fetch") &&
         !err.message.includes("NetworkError") &&
         !err.message.includes("fetch")
       ) {
-        throw new Error(err.message || "Invalid student email or password. Please verify your credentials.");
+        throw new Error(err.message || "Invalid student credentials. Please verify your email/USN and password.");
       }
 
-      // Offline / Local verification fallback: Validate against registered student records strictly
-      const students = getLocalStudents();
-      const matched = students.find((s) => s.email.toLowerCase() === cleanEmail);
-
-      if (!matched) {
-        throw new Error("No student account found for this email address. Please create an account first.");
-      }
-
-      if (!matched.password || matched.password !== cleanPass) {
-        throw new Error("Incorrect password. Please verify your password or use Forgot Password.");
-      }
-
-      const token = `STUDENT-JWT-${Date.now()}`;
-      const studentName = matched.name || cleanEmail.split("@")[0];
-      const studentUsn = matched.usn || "USN";
-      setItem("sa.token", token);
-      setItem("sa.role", "student");
-      setItem("sa.email", cleanEmail);
-      setItem("sa.name", studentName);
-      setItem("sa.usn", studentUsn);
-      if (matched.department) setItem("sa.department", matched.department);
-
-      return {
-        token,
-        role: "STUDENT",
-        email: cleanEmail,
-        name: studentName,
-        usn: studentUsn,
-      };
+      throw new Error("No student account found for this email address or USN. Please register first.");
     }
   },
 
-  loginAdmin: async (email: string, pass: string): Promise<AuthResponse> => {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPass = pass.trim();
+  loginAdmin: async (identifier: string, pass: string): Promise<AuthResponse> => {
+    const rawInput = (identifier || "").trim();
+    const cleanEmail = rawInput.toLowerCase();
+    const cleanPass = (pass || "").trim();
 
-    if (!cleanEmail || !cleanPass) {
+    if (!rawInput || !cleanPass) {
       throw new Error("Please enter both your administrator email and password.");
     }
 
@@ -1090,7 +1175,7 @@ export const api = {
       const res = await fetch(`${API_BASE_URL}/auth/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: cleanEmail, password: cleanPass }),
+        body: JSON.stringify({ email: rawInput, password: cleanPass }),
       });
       const data = await handleResponse<AuthResponse>(res);
       const token = data.token || data.accessToken || `ADMIN-JWT-${Date.now()}`;
@@ -1098,9 +1183,71 @@ export const api = {
       setItem("sa.role", "admin");
       setItem("sa.email", data.email || cleanEmail);
       if (data.name) setItem("sa.name", data.name);
-      return { ...data, token, role: "ADMIN", email: cleanEmail };
+      return { ...data, token, role: "ADMIN", email: data.email || cleanEmail };
     } catch (err: any) {
-      // If server responded with an actual HTTP error, strictly reject!
+      // Local verification fallback: Validate against registered admin records strictly
+      const rawAdmins = getItem("sa.registered_admins");
+      let admins: any[] = [];
+      try {
+        if (rawAdmins) admins = JSON.parse(rawAdmins);
+      } catch {}
+      if (!Array.isArray(admins)) admins = [];
+
+      const matched = admins.find(
+        (a) =>
+          (a.email || "").toLowerCase() === cleanEmail ||
+          (a.name || "").toLowerCase() === cleanEmail,
+      );
+
+      if (matched) {
+        if (matched.password && matched.password !== cleanPass) {
+          throw new Error("Incorrect administrator password. Please check your credentials.");
+        }
+
+        const token = `ADMIN-JWT-${Date.now()}`;
+        const adminName = matched.name || "Administrator";
+        setItem("sa.token", token);
+        setItem("sa.role", "admin");
+        setItem("sa.email", matched.email || cleanEmail);
+        setItem("sa.name", adminName);
+
+        return {
+          token,
+          role: "ADMIN",
+          email: matched.email || cleanEmail,
+          name: adminName,
+        };
+      }
+
+      // Check if student is trying to login via admin portal
+      const rawStudents = getItem("sa.registered_students");
+      let students: any[] = [];
+      try {
+        if (rawStudents) students = JSON.parse(rawStudents);
+      } catch {}
+      if (Array.isArray(students)) {
+        const matchedStudent = students.find(
+          (s) =>
+            (s.email || "").toLowerCase() === cleanEmail ||
+            (s.usn || "").toUpperCase() === rawInput.toUpperCase(),
+        );
+        if (matchedStudent && matchedStudent.password === cleanPass) {
+          const token = `STUDENT-JWT-${Date.now()}`;
+          setItem("sa.token", token);
+          setItem("sa.role", "student");
+          setItem("sa.email", matchedStudent.email || cleanEmail);
+          setItem("sa.name", matchedStudent.name || "Student");
+          setItem("sa.usn", matchedStudent.usn || "USN");
+          return {
+            token,
+            role: "STUDENT",
+            email: matchedStudent.email || cleanEmail,
+            name: matchedStudent.name || "Student",
+            usn: matchedStudent.usn || "USN",
+          };
+        }
+      }
+
       if (
         err.message &&
         !err.message.includes("Failed to fetch") &&
@@ -1110,31 +1257,7 @@ export const api = {
         throw new Error(err.message || "Invalid administrator credentials. Please check your email and password.");
       }
 
-      // Offline / Local verification fallback: Validate against registered admin records strictly
-      const admins = getLocalAdmins();
-      const matched = admins.find((a) => a.email.toLowerCase() === cleanEmail);
-
-      if (!matched) {
-        throw new Error("No administrator account found for this email address. Please register first.");
-      }
-
-      if (!matched.password || matched.password !== cleanPass) {
-        throw new Error("Incorrect administrator password. Please check your credentials.");
-      }
-
-      const token = `ADMIN-JWT-${Date.now()}`;
-      const adminName = matched.name || "Administrator";
-      setItem("sa.token", token);
-      setItem("sa.role", "admin");
-      setItem("sa.email", cleanEmail);
-      setItem("sa.name", adminName);
-
-      return {
-        token,
-        role: "ADMIN",
-        email: cleanEmail,
-        name: adminName,
-      };
+      throw new Error("No administrator account found for this email address. Please register first.");
     }
   },
 
@@ -1304,10 +1427,9 @@ export const api = {
       const tokenMatch = upperToken.match(/^S\d{2}-([A-Z0-9]{3,})-?(\d+)?$/);
       if (!matchedStudent && tokenMatch) {
         const rawPrefix = tokenMatch[1];
-        const seed = tokenMatch[2] || "01";
         const cleanName = rawPrefix.charAt(0) + rawPrefix.slice(1).toLowerCase();
         const dynEmail = `${rawPrefix.toLowerCase()}@college.edu`;
-        const dynUsn = `1RA21CS0${seed}`;
+        const dynUsn = getItem("sa.usn") || rawPrefix.toUpperCase();
         matchedStudent = {
           name: cleanName,
           email: dynEmail,
@@ -1323,15 +1445,15 @@ export const api = {
         // Check current session user if available
         const currentEmail = getItem("sa.email");
         matchedStudent = localStudents.find((s) => s.email === currentEmail) || {
-          name: "Student",
-          email: "student@college.edu",
-          usn: "1RA21CS001",
+          name: getItem("sa.name") || "Student",
+          email: currentEmail || "student@college.edu",
+          usn: getItem("sa.usn") || "USN",
         };
       }
 
       const email = matchedStudent?.email || "student@college.edu";
       const name = matchedStudent?.name || "Student";
-      const usn = matchedStudent?.usn || "1RA21CS001";
+      const usn = matchedStudent?.usn || getItem("sa.usn") || "USN";
       const todayStr = new Date().toISOString().split("T")[0];
       const nowIso = new Date().toISOString();
       const activeSessions = getRealtimeSubjectSessions();
@@ -2166,4 +2288,180 @@ export const api = {
       records,
     };
   },
+
+  // --- LEAVE REQUEST APIS ---
+  submitLeaveRequest: async (payload: {
+    fromDate: string;
+    toDate: string;
+    leaveType?: string;
+    reason: string;
+    documentPath?: string;
+  }): Promise<LeaveItem> => {
+    const studentEmail = (getItem("sa.email") || "student@college.edu").toLowerCase();
+    const studentName = getItem("sa.name") || studentEmail.split("@")[0] || "Student";
+    const studentUsn = getItem("sa.usn") || "USN";
+    const department = getItem("sa.department") || "Computer Science";
+
+    const localLeave: LeaveItem = {
+      id: Date.now(),
+      studentName,
+      studentEmail,
+      studentUsn,
+      department,
+      fromDate: payload.fromDate,
+      toDate: payload.toDate,
+      leaveType: payload.leaveType || "CASUAL",
+      reason: payload.reason,
+      documentPath: payload.documentPath,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/leaves`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify(payload),
+      });
+      const data = await handleResponse<any>(res);
+      const saved = data?.data || data || localLeave;
+      saveLocalLeave(saved);
+      return saved;
+    } catch {
+      saveLocalLeave(localLeave);
+      return localLeave;
+    }
+  },
+
+  getMyLeaveRequests: async (): Promise<LeaveItem[]> => {
+    const studentEmail = (getItem("sa.email") || "").toLowerCase();
+    try {
+      const res = await fetch(`${API_BASE_URL}/leaves/my`, {
+        headers: getAuthHeader(),
+      });
+      const data = await handleResponse<any>(res);
+      const leaves = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      if (leaves.length > 0) return leaves;
+    } catch {}
+    const local = getLocalLeaves();
+    if (studentEmail) {
+      return local.filter((l) => l.studentEmail.toLowerCase() === studentEmail);
+    }
+    return local;
+  },
+
+  getAllLeaveRequests: async (status?: string): Promise<LeaveItem[]> => {
+    try {
+      const url = status ? `${API_BASE_URL}/leaves?status=${status}` : `${API_BASE_URL}/leaves`;
+      const res = await fetch(url, { headers: getAuthHeader() });
+      const data = await handleResponse<any>(res);
+      const leaves = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+      if (leaves.length > 0) return leaves;
+    } catch {}
+    const local = getLocalLeaves();
+    if (status) {
+      return local.filter((l) => l.status.toUpperCase() === status.toUpperCase());
+    }
+    return local;
+  },
+
+  updateLeaveStatus: async (
+    id: number,
+    status: "APPROVED" | "REJECTED",
+    remarks?: string,
+  ): Promise<LeaveItem> => {
+    const reviewerName = getItem("sa.name") || "Administrator";
+    try {
+      const res = await fetch(`${API_BASE_URL}/leaves/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify({ status, remarks }),
+      });
+      const data = await handleResponse<any>(res);
+      const updated = data?.data || data;
+      updateLocalLeaveStatus(id, status, reviewerName, remarks);
+      return updated;
+    } catch {
+      const updated = updateLocalLeaveStatus(id, status, reviewerName, remarks);
+      return updated;
+    }
+  },
 };
+
+export interface LeaveItem {
+  id: number;
+  studentId?: number;
+  studentName: string;
+  studentEmail: string;
+  studentUsn: string;
+  department?: string;
+  fromDate: string;
+  toDate: string;
+  leaveType: string;
+  reason: string;
+  documentPath?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  reviewedBy?: string;
+  reviewedAt?: string;
+  remarks?: string;
+  createdAt: string;
+}
+
+function getLocalLeaves(): LeaveItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("sa.leaves");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveLocalLeave(leave: LeaveItem): void {
+  if (typeof window === "undefined") return;
+  const list = getLocalLeaves();
+  const index = list.findIndex((l) => l.id === leave.id);
+  if (index >= 0) {
+    list[index] = leave;
+  } else {
+    list.unshift(leave);
+  }
+  localStorage.setItem("sa.leaves", JSON.stringify(list));
+  window.dispatchEvent(new Event("storage"));
+}
+
+function updateLocalLeaveStatus(
+  id: number,
+  status: "APPROVED" | "REJECTED",
+  reviewerName: string,
+  remarks?: string,
+): LeaveItem {
+  const list = getLocalLeaves();
+  const item = list.find((l) => l.id === id);
+  if (item) {
+    item.status = status;
+    item.reviewedBy = reviewerName;
+    item.reviewedAt = new Date().toISOString();
+    item.remarks = remarks;
+    localStorage.setItem("sa.leaves", JSON.stringify(list));
+    window.dispatchEvent(new Event("storage"));
+    return item;
+  }
+  return {
+    id,
+    studentName: "Student",
+    studentEmail: "student@college.edu",
+    studentUsn: "USN",
+    fromDate: new Date().toISOString().split("T")[0],
+    toDate: new Date().toISOString().split("T")[0],
+    leaveType: "CASUAL",
+    reason: "Personal Leave",
+    status,
+    reviewedBy: reviewerName,
+    reviewedAt: new Date().toISOString(),
+    remarks,
+    createdAt: new Date().toISOString(),
+  };
+}

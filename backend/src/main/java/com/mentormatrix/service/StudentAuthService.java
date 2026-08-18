@@ -113,36 +113,46 @@ public class StudentAuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
+        String rawInput = request.getEmail().trim();
+        String cleanEmail = rawInput.toLowerCase();
 
         Student student = studentRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        if (student == null) {
+            student = studentRepository.findByStudentIdAndDeletedFalse(rawInput).orElse(null);
+        }
         User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        if (user == null && student != null && student.getUser() != null) {
+            user = student.getUser();
+        }
 
         if (student == null && user == null) {
-            throw new UnauthorizedException("Invalid credentials");
+            throw new UnauthorizedException("Invalid student email/USN or password");
         }
 
         String passwordHash = student != null && student.getPassword() != null ? student.getPassword() : (user != null ? user.getPassword() : null);
         String name = student != null && student.getName() != null ? student.getName() : (user != null ? user.getName() : "Student");
+        String finalEmail = student != null && student.getEmail() != null ? student.getEmail() : (user != null ? user.getEmail() : cleanEmail);
+        String usn = student != null ? student.getStudentId() : "";
         Boolean active = student != null && student.getActive() != null ? student.getActive() : (user != null ? user.getActive() : true);
 
         if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
-            throw new UnauthorizedException("Invalid credentials");
+            throw new UnauthorizedException("Invalid student email/USN or password");
         }
 
         if (!Boolean.TRUE.equals(active)) {
             throw new UnauthorizedException("Account is deactivated");
         }
 
-        String token = jwtUtil.generateToken(cleanEmail, "STUDENT", name);
-        String refreshToken = refreshTokenService.createRefreshToken(cleanEmail, "STUDENT").getToken();
+        String token = jwtUtil.generateToken(finalEmail, "STUDENT", name);
+        String refreshToken = refreshTokenService.createRefreshToken(finalEmail, "STUDENT").getToken();
 
         return AuthResponse.builder()
                 .token(token)
                 .accessToken(token)
                 .refreshToken(refreshToken)
-                .email(cleanEmail)
+                .email(finalEmail)
                 .name(name)
+                .usn(usn)
                 .role("STUDENT")
                 .build();
     }
@@ -151,11 +161,17 @@ public class StudentAuthService {
 
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        Student student = studentRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
 
-        String otp = otpService.generateOtp(user.getEmail());
-        emailService.sendOtpEmail(user.getEmail(), otp);
+        if (user == null && student == null) {
+            throw new ResourceNotFoundException("No registered student found with email: " + cleanEmail);
+        }
+
+        String targetEmail = user != null ? user.getEmail() : (student != null ? student.getEmail() : cleanEmail);
+        String otp = otpService.generateOtp(targetEmail);
+        emailService.sendOtpEmail(targetEmail, otp);
     }
 
     @Transactional
@@ -164,18 +180,32 @@ public class StudentAuthService {
             throw new BadRequestException("Passwords do not match");
         }
 
-        if (!otpService.validateOtp(request.getEmail(), request.getOtp())) {
-            throw new UnauthorizedException("Invalid or expired OTP");
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        if (!otpService.validateOtp(cleanEmail, request.getOtp().trim())) {
+            throw new UnauthorizedException("Invalid or expired OTP code. Please check your email or request a new OTP.");
         }
 
-        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        Student student = studentRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
 
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
+        if (user == null && student == null) {
+            throw new ResourceNotFoundException("Student not found for email: " + cleanEmail);
+        }
 
-        otpService.clearOtp(request.getEmail());
-        emailService.sendPasswordChangedEmail(user.getEmail(), user.getName());
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        if (user != null) {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        }
+        if (student != null) {
+            student.setPassword(encodedPassword);
+            studentRepository.save(student);
+        }
+
+        otpService.clearOtp(cleanEmail);
+        String studentName = user != null ? user.getName() : (student != null ? student.getName() : "Student");
+        emailService.sendPasswordChangedEmail(cleanEmail, studentName);
     }
 
     @Transactional

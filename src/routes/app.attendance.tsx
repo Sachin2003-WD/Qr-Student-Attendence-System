@@ -92,7 +92,6 @@ function StudentAttendanceView() {
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [selectedSubjectCode, setSelectedSubjectCode] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
 
   const fetchStudentData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -108,10 +107,10 @@ function StudentAttendanceView() {
       if (batches && batches.length > 0) {
         const formatted = batches.map((b: any, idx: number) => ({
           code: b.batchCode || b.name || `BATCH-0${idx + 1}`,
-          name: b.subjectName || b.name || "Subject Session",
-          time: b.classTiming || "09:00 AM",
-          faculty: b.trainerName || "Faculty Trainer",
-          room: b.branch || "Main Campus",
+          name: b.subjectName || b.name || "Class Session",
+          time: b.classTiming || "09:00 AM - 10:30 AM",
+          faculty: b.trainerName || "Faculty Lead",
+          room: b.branch || "Lecture Hall",
           token: getDailyTokenForSubject(b.batchCode || b.name || "B01"),
         }));
         setActiveSessions(formatted);
@@ -140,25 +139,19 @@ function StudentAttendanceView() {
     };
   }, []);
 
-  const handleCopy = () => {
-    if (!qrData?.token) return;
-    navigator.clipboard.writeText(qrData.token);
-    setCopied(true);
-    toast.success("Daily dynamic QR token copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const studentEmail = localStorage.getItem("sa.email") || "sachin@college.edu";
+  const studentEmail = localStorage.getItem("sa.email") || "student@college.edu";
   const studentName = localStorage.getItem("sa.name") || studentEmail.split("@")[0] || "Student";
+  const studentUsn = localStorage.getItem("sa.usn") || "";
+  const studentDept = localStorage.getItem("sa.department") || localStorage.getItem("sa.dept") || "Computer Science";
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6">
         {/* ENLARGED STUDENT DYNAMIC QR CARD */}
-        <Card className="md:col-span-6 border-primary/30 bg-primary/5 shadow-sm flex flex-col justify-between">
+        <Card className="md:col-span-6 border-primary/30 bg-primary/5 shadow-xs flex flex-col justify-between">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-lg font-bold flex items-center justify-center gap-2 text-primary">
-              <QrCode className="h-6 w-6" /> Your Personal Dynamic Attendance QR
+            <CardTitle className="text-base sm:text-lg font-bold flex items-center justify-center gap-2 text-primary">
+              <QrCode className="h-5 w-5 sm:h-6 sm:w-6" /> Your Personal Dynamic Attendance QR
             </CardTitle>
             <CardDescription className="text-xs">
               Point this dynamic QR code at the Admin / Faculty camera scanner. It scans instantly
@@ -168,15 +161,15 @@ function StudentAttendanceView() {
           <CardContent className="flex flex-col items-center text-center space-y-4 pt-2 pb-6">
             {/* Enlarged QR Code Canvas Viewport */}
             {qrData?.qrCodeBase64 ? (
-              <div className="p-4 sm:p-5 bg-white rounded-3xl shadow-xl border-4 border-primary/20 transition-all hover:scale-[1.02]">
+              <div className="p-3 sm:p-5 bg-white rounded-2xl sm:rounded-3xl shadow-xl border-4 border-primary/20 transition-all hover:scale-[1.02] max-w-full">
                 <img
                   src={qrData.qrCodeBase64}
                   alt="Student Dynamic QR"
-                  className="h-64 w-64 sm:h-72 sm:w-72 object-contain"
+                  className="h-52 w-52 sm:h-64 sm:w-64 md:h-72 md:w-72 object-contain"
                 />
               </div>
             ) : (
-              <div className="grid h-64 w-64 sm:h-72 sm:w-72 place-items-center rounded-3xl border-2 border-dashed bg-card text-xs">
+              <div className="grid h-52 w-52 sm:h-64 sm:w-64 md:h-72 md:w-72 place-items-center rounded-2xl sm:rounded-3xl border-2 border-dashed bg-card text-xs">
                 <div className="space-y-2 text-center p-4">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto text-primary" />
                   <p className="font-semibold text-foreground">Generating Live Dynamic QR…</p>
@@ -185,46 +178,25 @@ function StudentAttendanceView() {
             )}
 
             {/* Student Info Chip */}
-            <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs">
               <span className="font-bold text-foreground bg-background px-3 py-1 rounded-full border border-border">
                 {studentName}
               </span>
-              <span className="font-mono text-[11px] text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                1RA21CS002
-              </span>
+              {studentUsn && (
+                <span className="font-mono text-[11px] text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                  {studentUsn}
+                </span>
+              )}
               <span className="text-[11px] text-muted-foreground bg-background px-2.5 py-1 rounded-full border border-border">
-                Computer Science
+                {studentDept}
               </span>
             </div>
 
-            {/* Token Copy Bar */}
+            {/* Token Display Bar */}
             <div className="space-y-2 max-w-sm w-full">
-              <div className="flex items-center justify-between text-xs font-mono font-bold bg-background p-2.5 rounded-xl border border-border shadow-xs">
-                <span className="text-primary truncate">{qrData?.token || "Generating..."}</span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 text-xs px-2 cursor-pointer"
-                    onClick={handleCopy}
-                  >
-                    {copied ? (
-                      <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5" />
-                    )}
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground cursor-pointer"
-                    onClick={() => fetchStudentData(false)}
-                    title="Refresh Dynamic QR"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+              <div className="flex items-center justify-center text-xs font-mono font-bold bg-background p-2.5 rounded-xl border border-border shadow-xs">
+                <span className="text-muted-foreground mr-2 font-medium font-sans">Daily Token:</span>
+                <span className="text-primary font-bold">{qrData?.token || "Generating..."}</span>
               </div>
             </div>
           </CardContent>
@@ -657,7 +629,6 @@ function AdminAttendanceView() {
                     const vH = video.videoHeight;
 
                     // STAGE 1: Fast Center-Crop Pass at 100% Native Resolution
-                    // The target reticle is centered. Cropping the central 65% square eliminates blur and decodes in 2ms.
                     if (!canvasRef.current) {
                       canvasRef.current = document.createElement("canvas");
                     }
@@ -691,7 +662,7 @@ function AdminAttendanceView() {
                       } catch {}
                     }
 
-                    // STAGE 3: Full-frame jsQR with multi-contrast inversion attempts (for phone screen reflections)
+                    // STAGE 3: Full-frame jsQR with multi-contrast inversion attempts
                     if (!detectedData && ctx) {
                       const maxDim = 800;
                       let targetW = vW;
@@ -833,41 +804,34 @@ function AdminAttendanceView() {
     totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : "0.0";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* SESSION STATUS BANNER */}
       {!sessionActive && (
         <Card className="border-rose-500/40 bg-rose-500/10">
-          <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 text-xs">
+          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 text-xs">
             <div className="flex items-center gap-3">
-              <AlertTriangle className="h-6 w-6 text-rose-500 shrink-0" />
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500 shrink-0" />
               <div>
                 <strong className="text-sm font-bold text-foreground block">
                   Attendance Session is Currently STOPPED
                 </strong>
-                <p className="text-muted-foreground mt-0.5">
+                <p className="text-muted-foreground mt-0.5 text-xs">
                   Click <strong>"Start Session"</strong> below to activate automatic camera QR
                   scanning and audio confirmation for {selectedBatchCode || "selected batch"}.
                 </p>
               </div>
             </div>
-            {/* <Button
-              size="sm"
-              className="gap-2 text-xs font-bold shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
-              onClick={handleStartSession}
-              disabled={loading}
-            >
-              <Play className="h-4 w-4" /> Start Session Now
-            </Button> */}
           </CardContent>
         </Card>
       )}
 
-      {/* 1. SESSION CONFIGURATION BAR */}
+      {/* 1. SESSION CONFIGURATION BAR - FULLY RESPONSIVE */}
       <Card className="border-border/60 shadow-sm bg-card">
         <CardHeader className="pb-3 border-b border-border/40">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" /> Attendance Session Configuration
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+              <span>Attendance Session Configuration</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <Badge
@@ -884,7 +848,7 @@ function AdminAttendanceView() {
           </div>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
@@ -948,12 +912,12 @@ function AdminAttendanceView() {
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-2 lg:col-span-1">
               {sessionActive ? (
                 <Button
                   variant="destructive"
                   size="sm"
-                  className="w-full gap-2 text-xs font-semibold"
+                  className="w-full gap-2 text-xs font-semibold h-9"
                   onClick={handleStopSession}
                   disabled={loading}
                 >
@@ -962,7 +926,7 @@ function AdminAttendanceView() {
               ) : (
                 <Button
                   size="sm"
-                  className="w-full gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="w-full gap-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white h-9"
                   onClick={handleStartSession}
                   disabled={loading}
                 >
@@ -974,46 +938,49 @@ function AdminAttendanceView() {
         </CardContent>
       </Card>
 
-      {/* 2. LIVE ATTENDANCE STATS COUNTER */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4 border border-border/60 shadow-xs">
+      {/* 2. LIVE ATTENDANCE STATS COUNTER - RESPONSIVE */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <Card className="p-3 sm:p-4 border border-border/60 shadow-xs">
           <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-            <Users className="h-3.5 w-3.5 text-primary" /> Total Registered Students
+            <Users className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="truncate">Registered Students</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-foreground mt-1">{totalStudents}</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-foreground mt-1">{totalStudents}</div>
         </Card>
-        <Card className="p-4 border border-emerald-500/30 bg-emerald-500/5 shadow-xs">
+        <Card className="p-3 sm:p-4 border border-emerald-500/30 bg-emerald-500/5 shadow-xs">
           <div className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Present Today
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Present Today</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+          <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
             {presentCount}
           </div>
         </Card>
-        <Card className="p-4 border border-rose-500/30 bg-rose-500/5 shadow-xs">
-          <div className="text-xs text-rose-600 dark:text-rose-400 font-semibold">Absent</div>
-          <div className="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">
+        <Card className="p-3 sm:p-4 border border-rose-500/30 bg-rose-500/5 shadow-xs">
+          <div className="text-xs text-rose-600 dark:text-rose-400 font-semibold truncate">Absent</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">
             {absentCount}
           </div>
         </Card>
-        <Card className="p-4 border border-primary/30 bg-primary/5 shadow-xs">
-          <div className="text-xs text-primary font-semibold">Attendance Rate</div>
-          <div className="text-2xl font-bold font-mono text-primary mt-1">
+        <Card className="p-3 sm:p-4 border border-primary/30 bg-primary/5 shadow-xs">
+          <div className="text-xs text-primary font-semibold truncate">Attendance Rate</div>
+          <div className="text-xl sm:text-2xl font-bold font-mono text-primary mt-1">
             {attendancePercentage}%
           </div>
         </Card>
       </div>
 
       {/* 3. CAMERA AUTOMATIC SCANNER & LAST SCANNED STUDENT PAYLOAD */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ENLARGED CAMERA SCANNER VIEWPORT */}
-        <Card className="lg:col-span-6 border border-border/60 shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        {/* RESPONSIVE CAMERA SCANNER VIEWPORT */}
+        <Card className="lg:col-span-6 border border-border/60 shadow-sm flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-border/40">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Camera className="h-5 w-5 text-primary" /> Automatic Camera QR Scanner
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+                <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                <span>Automatic Camera Scanner</span>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 {/* Camera Lens Flip Button */}
                 <Button
                   size="sm"
@@ -1023,8 +990,8 @@ function AdminAttendanceView() {
                   onClick={() => setFacingMode((prev) => (prev === "environment" ? "user" : "environment"))}
                   title="Flip between Back and Front camera lenses"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  {facingMode === "environment" ? "Back Lens" : "Front Lens"}
+                  <RefreshCw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span>{facingMode === "environment" ? "Back" : "Front"}</span>
                 </Button>
 
                 {/* Audio Feedback Sound Toggle */}
@@ -1040,30 +1007,30 @@ function AdminAttendanceView() {
                   title={soundEnabled ? "Audio confirmation sound is ON" : "Audio sound is muted"}
                 >
                   {soundEnabled ? (
-                    <Volume2 className="h-3.5 w-3.5 text-emerald-600" />
+                    <Volume2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-600" />
                   ) : (
-                    <VolumeX className="h-3.5 w-3.5" />
+                    <VolumeX className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                   )}
-                  {soundEnabled ? "Beep ON" : "Muted"}
+                  <span>{soundEnabled ? "Beep" : "Mute"}</span>
                 </Button>
 
                 <Button
                   size="sm"
                   variant={cameraActive ? "default" : "outline"}
-                  className="h-7 text-xs gap-1 cursor-pointer"
+                  className="h-7 text-xs gap-1 cursor-pointer px-2.5"
                   disabled={!sessionActive}
                   onClick={() => setCameraActive(!cameraActive)}
                 >
-                  <Camera className="h-3.5 w-3.5" />
-                  {cameraActive ? "Pause Scanner" : "Enable Scanner"}
+                  <Camera className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span>{cameraActive ? "Pause" : "Start Scan"}</span>
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-4">
-            {/* Real HTML5 Camera Viewport with Automatic Recognition - Enlarged Viewport */}
+            {/* Real HTML5 Camera Viewport with Automatic Recognition - Mobile Responsive */}
             <div
-              className={`relative w-full h-[480px] sm:h-[540px] md:h-[580px] rounded-3xl bg-slate-950 border overflow-hidden flex flex-col items-center justify-center text-center p-4 transition-all duration-300 ${
+              className={`relative w-full h-[320px] sm:h-[400px] md:h-[460px] lg:h-[480px] rounded-2xl sm:rounded-3xl bg-slate-950 border overflow-hidden flex flex-col items-center justify-center text-center p-3 sm:p-4 transition-all duration-300 ${
                 scanFlash
                   ? "border-emerald-500 ring-4 ring-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.6)]"
                   : "border-slate-800"
@@ -1081,59 +1048,59 @@ function AdminAttendanceView() {
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/60 pointer-events-none" />
 
                   {/* Top Status Beacon */}
-                  <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 text-slate-200 border border-slate-700/80 px-3 py-1.5 rounded-full text-[11px] font-medium shadow-lg backdrop-blur-xs">
+                  <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 sm:gap-2 bg-slate-900/90 text-slate-200 border border-slate-700/80 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-medium shadow-lg backdrop-blur-xs">
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    Live Optical Decoder Active
+                    Live Optical Scanner Active
                   </div>
 
-                  {/* Enlarged QR Target Scanning Reticle Overlay */}
+                  {/* Responsive QR Target Scanning Reticle Overlay */}
                   <div
-                    className={`relative z-10 w-72 h-72 sm:w-84 sm:h-84 md:w-96 md:h-96 border-2 rounded-3xl flex items-center justify-center pointer-events-none transition-all ${
+                    className={`relative z-10 w-52 h-52 sm:w-64 sm:h-64 md:w-80 md:h-80 max-w-[85vw] max-h-[85vw] border-2 rounded-2xl sm:rounded-3xl flex items-center justify-center pointer-events-none transition-all ${
                       scanFlash
                         ? "border-emerald-400 bg-emerald-500/20 scale-105"
                         : "border-primary/80 shadow-[0_0_40px_rgba(59,130,246,0.4)]"
                     }`}
                   >
                     <Scan
-                      className={`w-20 h-20 transition-colors ${
+                      className={`w-14 h-14 sm:w-20 sm:h-20 transition-colors ${
                         scanFlash
                           ? "text-emerald-400 scale-110"
                           : "text-primary opacity-90 animate-pulse"
                       }`}
                     />
-                    {/* Enlarged Crisp Corner Markers */}
-                    <div className="absolute -top-3 -left-3 w-9 h-9 border-t-4 border-l-4 border-primary rounded-tl-xl" />
-                    <div className="absolute -top-3 -right-3 w-9 h-9 border-t-4 border-r-4 border-primary rounded-tr-xl" />
-                    <div className="absolute -bottom-3 -left-3 w-9 h-9 border-b-4 border-l-4 border-primary rounded-bl-xl" />
-                    <div className="absolute -bottom-3 -right-3 w-9 h-9 border-b-4 border-r-4 border-primary rounded-br-xl" />
+                    {/* Responsive Corner Markers */}
+                    <div className="absolute -top-2.5 -left-2.5 sm:-top-3 sm:-left-3 w-6 h-6 sm:w-9 sm:h-9 border-t-4 border-l-4 border-primary rounded-tl-xl" />
+                    <div className="absolute -top-2.5 -right-2.5 sm:-top-3 sm:-right-3 w-6 h-6 sm:w-9 sm:h-9 border-t-4 border-r-4 border-primary rounded-tr-xl" />
+                    <div className="absolute -bottom-2.5 -left-2.5 sm:-bottom-3 sm:-left-3 w-6 h-6 sm:w-9 sm:h-9 border-b-4 border-l-4 border-primary rounded-bl-xl" />
+                    <div className="absolute -bottom-2.5 -right-2.5 sm:-bottom-3 sm:-right-3 w-6 h-6 sm:w-9 sm:h-9 border-b-4 border-r-4 border-primary rounded-br-xl" />
 
                     {/* Animated Scanning Laser Line */}
                     <div className="absolute inset-x-3 h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-bounce opacity-90 shadow-[0_0_15px_rgba(59,130,246,0.8)]" />
                   </div>
 
-                  <p className="relative z-10 text-xs font-semibold text-slate-100 mt-6 bg-slate-900/90 px-4 py-2 rounded-full border border-slate-700 shadow-xl flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary animate-spin" />
-                    Point student QR code at center target — scans instantly
+                  <p className="relative z-10 text-[11px] sm:text-xs font-semibold text-slate-100 mt-4 sm:mt-6 bg-slate-900/90 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-slate-700 shadow-xl flex items-center gap-1.5 sm:gap-2 max-w-[90%] truncate">
+                    <Sparkles className="h-3.5 w-3.5 text-primary animate-spin shrink-0" />
+                    <span className="truncate">Point student QR code at center — scans instantly</span>
                   </p>
                 </>
               ) : (
-                <div className="text-slate-400 text-xs space-y-2.5">
-                  <XCircle className="w-12 h-12 mx-auto text-slate-600" />
-                  <p className="font-semibold text-slate-300 text-base">
+                <div className="text-slate-400 text-xs space-y-2.5 p-4">
+                  <XCircle className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-slate-600" />
+                  <p className="font-semibold text-slate-300 text-sm sm:text-base">
                     {sessionActive ? "Camera scanner is paused" : "Attendance Session Stopped"}
                   </p>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  <p className="text-[11px] sm:text-xs text-slate-500 max-w-xs mx-auto">
                     {sessionActive
-                      ? 'Click "Enable Scanner" above to activate automatic camera recognition.'
+                      ? 'Click "Start Scan" above to activate automatic camera recognition.'
                       : 'Click "Start Session" above to activate attendance taking.'}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* SCAN TOKEN MANUAL INPUT FALLBACK */}
+            {/* SCAN TOKEN MANUAL INPUT FALLBACK - RESPONSIVE */}
             <form onSubmit={handleScanTokenSubmit} className="space-y-2">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   placeholder={
                     sessionActive
@@ -1148,7 +1115,7 @@ function AdminAttendanceView() {
                 <Button
                   type="submit"
                   disabled={!sessionActive || loading || !qrInputToken.trim()}
-                  className="gap-1.5 text-xs font-semibold h-10 px-5 shrink-0 cursor-pointer"
+                  className="gap-1.5 text-xs font-semibold h-10 px-4 sm:px-5 shrink-0 cursor-pointer w-full sm:w-auto"
                 >
                   <Scan className="h-4 w-4" /> Verify Token
                 </Button>
@@ -1157,12 +1124,13 @@ function AdminAttendanceView() {
           </CardContent>
         </Card>
 
-        {/* 4. LAST SCANNED STUDENT PAYLOAD SECTION */}
+        {/* 4. LAST SCANNED STUDENT PAYLOAD SECTION - RESPONSIVE */}
         <Card className="lg:col-span-6 border-border/60 shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-3 border-b border-border/40">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <UserCheck className="h-5 w-5 text-primary" /> Last Scanned Student Payload
+              <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                <span>Last Scanned Student Payload</span>
               </CardTitle>
               {scanResult?.success && (
                 <Badge className="bg-emerald-600 text-white font-mono text-[10px] gap-1 px-2">
@@ -1175,11 +1143,11 @@ function AdminAttendanceView() {
           <CardContent className="pt-4 flex-1 flex flex-col justify-center">
             {scanResult ? (
               scanResult.success ? (
-                <div className="space-y-3.5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 sm:p-5 text-left">
+                <div className="space-y-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-3.5 sm:p-5 text-left">
                   {/* Verified Header */}
                   <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
-                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-xs sm:text-sm">
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 shrink-0" />
                       <span>Attendance Confirmed & Logged</span>
                     </div>
                     <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px]">
@@ -1188,22 +1156,22 @@ function AdminAttendanceView() {
                   </div>
 
                   {/* Student Identity Information */}
-                  <div className="flex items-center gap-3 bg-background/80 p-3 rounded-xl border border-emerald-500/20">
-                    <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground font-bold text-base shadow-xs">
+                  <div className="flex items-center gap-3 bg-background/80 p-2.5 sm:p-3 rounded-xl border border-emerald-500/20">
+                    <div className="grid h-10 w-10 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground font-bold text-sm sm:text-base shadow-xs">
                       {scanResult.studentName?.charAt(0) || "S"}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold text-foreground truncate">
+                      <div className="text-xs sm:text-sm font-bold text-foreground truncate">
                         {scanResult.studentName}
                       </div>
-                      <div className="text-xs text-muted-foreground font-mono truncate">
+                      <div className="text-[11px] sm:text-xs text-muted-foreground font-mono truncate">
                         {scanResult.studentEmail}
                       </div>
-                      <div className="flex items-center gap-1.5 pt-0.5">
+                      <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
                         <span className="font-mono text-[10px] font-bold bg-primary/10 text-primary px-1.5 py-0.2 rounded border border-primary/20">
                           USN: {scanResult.studentId}
                         </span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground truncate">
                           {scanResult.department} • {scanResult.section}
                         </span>
                       </div>
@@ -1211,7 +1179,7 @@ function AdminAttendanceView() {
                   </div>
 
                   {/* Session Context Details */}
-                  <div className="grid grid-cols-2 gap-2 text-xs bg-background/60 p-3 rounded-xl border border-emerald-500/20">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-background/60 p-2.5 sm:p-3 rounded-xl border border-emerald-500/20">
                     <div>
                       <span className="text-muted-foreground text-[10px] block">
                         Batch Code & Subject
@@ -1234,7 +1202,7 @@ function AdminAttendanceView() {
 
                   {/* Raw Scanned Payload Token Box */}
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground font-semibold">
+                    <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-muted-foreground font-semibold">
                       <span>Raw Scanned QR Payload Token:</span>
                       <Button
                         size="sm"
@@ -1250,7 +1218,7 @@ function AdminAttendanceView() {
                         {copiedPayload ? "Copied" : "Copy Payload"}
                       </Button>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-background border border-border font-mono text-xs text-foreground font-bold break-all select-all">
+                    <div className="p-2 sm:p-2.5 rounded-lg bg-background border border-border font-mono text-[11px] sm:text-xs text-foreground font-bold break-all select-all">
                       {scanResult.rawToken || "STU-TOKEN-VERIFIED"}
                     </div>
                   </div>
@@ -1258,17 +1226,17 @@ function AdminAttendanceView() {
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
                     <span className="flex items-center gap-1">
                       <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                      Secure
+                      Secure Verified
                     </span>
                     <span className="font-mono text-emerald-600 font-bold">
-                      Verification: SUCCESS
+                      SUCCESS ✓
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5 text-left">
-                  <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-sm">
-                    <AlertCircle className="h-5 w-5" /> Attendance Scan Rejected
+                <div className="space-y-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 sm:p-5 text-left">
+                  <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs sm:text-sm">
+                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5" /> Attendance Scan Rejected
                   </div>
                   <p className="text-xs text-rose-700 dark:text-rose-300 font-medium">
                     {scanResult.message}
@@ -1281,10 +1249,10 @@ function AdminAttendanceView() {
                 </div>
               )
             ) : (
-              <div className="text-center py-12 space-y-2 text-muted-foreground border border-dashed rounded-2xl">
-                <Scan className="w-12 h-12 mx-auto text-muted-foreground/40" />
-                <p className="text-sm font-bold text-foreground">Waiting for Student QR Scan</p>
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              <div className="text-center py-8 sm:py-12 space-y-2 text-muted-foreground border border-dashed rounded-2xl p-4">
+                <Scan className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-muted-foreground/40" />
+                <p className="text-xs sm:text-sm font-bold text-foreground">Waiting for Student QR Scan</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground max-w-xs mx-auto">
                   When a student points their QR code at the camera, attendance will be confirmed
                   with a chime and full student payload details will appear here.
                 </p>
@@ -1294,13 +1262,13 @@ function AdminAttendanceView() {
         </Card>
       </div>
 
-      {/* 5. RECENT SCANNED SESSION ATTENDANCE LOGS */}
+      {/* 5. RECENT SCANNED SESSION ATTENDANCE LOGS - RESPONSIVE */}
       <Card className="border border-border/60 shadow-xs">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 pb-3">
           <div>
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" /> Live Scanned Attendance Feed (
-              {scannedList.length} Marked)
+            <CardTitle className="text-sm sm:text-base font-bold flex items-center gap-2">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+              <span>Live Scanned Attendance Feed ({scannedList.length} Marked)</span>
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">
               Real-time feed of students confirmed in current attendance session.
@@ -1308,14 +1276,14 @@ function AdminAttendanceView() {
           </div>
           <Badge
             variant="outline"
-            className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+            className="text-xs font-mono bg-emerald-500/10 text-emerald-600 border-emerald-500/20 w-fit"
           >
-            Live
+            Live Feed
           </Badge>
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-x-auto">
-            <Table className="min-w-[650px]">
+            <Table className="min-w-[580px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs whitespace-nowrap">Student Name</TableHead>
@@ -1330,10 +1298,10 @@ function AdminAttendanceView() {
                   scannedList.map((r, i) => (
                     <TableRow key={r.id || i}>
                       <TableCell className="font-medium text-xs font-semibold whitespace-nowrap flex items-center gap-2">
-                        <div className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                        <div className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-primary text-[10px] font-bold shrink-0">
                           {(r.userName || r.userEmail || "S").charAt(0).toUpperCase()}
                         </div>
-                        <span>{r.userName || r.userEmail}</span>
+                        <span className="truncate">{r.userName || r.userEmail}</span>
                       </TableCell>
                       <TableCell className="font-mono text-xs text-primary font-semibold whitespace-nowrap">
                         {selectedBatchCode || "BATCH-01"}

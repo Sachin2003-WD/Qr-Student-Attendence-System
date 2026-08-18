@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,11 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: typeof search.email === "string" ? search.email : "",
+    role: typeof search.role === "string" ? search.role : "student",
+    otp: typeof search.otp === "string" ? search.otp : "",
+  }),
   head: () => ({
     meta: [
       { title: "Reset Password — Smart Attendance System" },
@@ -43,6 +48,22 @@ function Reset() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [countdown, setCountdown] = useState<number>(0);
+
+  // Sync with search params if they arrive late
+  useEffect(() => {
+    if (search?.email && !email) setEmail(search.email);
+    if (search?.role && (search.role === "admin" || search.role === "student")) setRole(search.role);
+  }, [search]);
+
+  // Countdown timer for resend
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   // Password validation rules
   const hasMinLength = newPassword.length >= 8;
@@ -62,8 +83,10 @@ function Reset() {
     try {
       const res = await api.forgotPassword(email.trim().toLowerCase(), role);
       toast.success(res.message || "A new 6-digit OTP code has been sent to your email.", {
-        duration: 5000,
+        description: "Please check your inbox (and spam folder) for the 6-digit verification code.",
+        duration: 6000,
       });
+      setCountdown(60);
     } catch (err: any) {
       toast.error(err.message || "Failed to resend OTP.");
     } finally {
@@ -192,11 +215,11 @@ function Reset() {
             <button
               type="button"
               onClick={handleResendOtp}
-              disabled={resending}
-              className="text-xs text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
+              disabled={resending || countdown > 0}
+              className={`text-xs font-medium flex items-center gap-1 cursor-pointer ${countdown > 0 ? "text-muted-foreground cursor-not-allowed" : "text-primary hover:underline"}`}
             >
               <RotateCw className={`h-3 w-3 ${resending ? "animate-spin" : ""}`} />
-              {resending ? "Sending..." : "Resend OTP"}
+              {resending ? "Sending..." : countdown > 0 ? `Resend in ${countdown}s` : "Resend OTP"}
             </button>
           </div>
           <Input

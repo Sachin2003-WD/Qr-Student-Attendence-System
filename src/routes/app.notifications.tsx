@@ -49,42 +49,27 @@ export interface AppNotification {
   read: boolean;
 }
 
-const DEFAULT_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "notif-1",
-    title: "Welcome to Attendrix Smart Attendance Platform",
-    body: "Your student profile is active. Please present your personal dynamic QR code during classroom sessions for automated attendance logging.",
-    sender: "System Administrator",
-    recipient: "ALL_STUDENTS",
-    recipientName: "All Students",
-    priority: "normal",
-    time: "09:00 AM",
-    date: new Date().toISOString().split("T")[0],
-    read: false,
-  },
-  {
-    id: "notif-2",
-    title: "Attendance Roster Sync Completed",
-    body: "Daily batch attendance session records for Computer Science and Information Technology have been successfully updated in database.",
-    sender: "Academic Faculty Lead",
-    recipient: "ALL_STUDENTS",
-    recipientName: "All Students",
-    priority: "important",
-    time: "10:30 AM",
-    date: new Date().toISOString().split("T")[0],
-    read: true,
-  },
-];
+const DEFAULT_NOTIFICATIONS: AppNotification[] = [];
 
 function getStoredNotifications(): AppNotification[] {
   try {
     const raw = localStorage.getItem("sa.notifications");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        // Filter out legacy mock notifications
+        return parsed.filter(
+          (n: AppNotification) =>
+            !n.title?.includes("Welcome to Attendrix") &&
+            !n.title?.includes("Attendance Roster Sync Completed") &&
+            !n.sender?.includes("Laxman") &&
+            !n.body?.includes("Grooming & Skills") &&
+            !n.body?.includes("Java Full Stack")
+        );
+      }
     }
   } catch {}
-  return DEFAULT_NOTIFICATIONS;
+  return [];
 }
 
 function saveStoredNotifications(notifs: AppNotification[]): void {

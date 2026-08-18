@@ -9,6 +9,10 @@ import { toast } from "sonner";
 import { Mail, GraduationCap, ShieldCheck, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/forgot-password")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: typeof search.email === "string" ? search.email : "",
+    role: typeof search.role === "string" ? search.role : "student",
+  }),
   head: () => ({
     meta: [
       { title: "Forgot Password — Smart Attendance System" },
@@ -38,10 +42,10 @@ function Forgot() {
     setLoading(true);
     try {
       const res = await api.forgotPassword(cleanEmail, role);
-      toast.success(
-        res.message || "A 6-digit verification code has been sent to your email.",
-        { duration: 5000 },
-      );
+      toast.success(`A 6-digit OTP verification code has been dispatched to ${cleanEmail}.`, {
+        description: "Please check your inbox (and spam/junk folder) for your OTP code.",
+        duration: 6000,
+      });
 
       setTimeout(() => {
         nav({

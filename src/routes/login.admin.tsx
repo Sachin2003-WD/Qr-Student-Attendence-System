@@ -29,26 +29,26 @@ function AdminLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      toast.error("Please enter a valid administrator email address (e.g. admin@college.edu).");
+    const cleanInput = email.trim();
+    if (!cleanInput || cleanInput.length < 3) {
+      toast.error("Please enter your administrator email address.");
       return;
     }
 
-    if (!password || password.length < 6) {
-      toast.error("Please enter your admin password (minimum 6 characters).");
+    if (!password) {
+      toast.error("Please enter your admin password.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await api.loginAdmin(cleanEmail, password);
-      setRole("admin");
-      toast.success(`Welcome back, ${res.name || res.email}! Admin session active.`);
+      const res = await api.loginAdmin(cleanInput, password);
+      const userRole = res.role?.toLowerCase() === "student" ? "student" : "admin";
+      setRole(userRole);
+      toast.success(`Welcome back, ${res.name || cleanInput}! Login successful.`);
       nav({ to: "/app/dashboard" });
     } catch (err: any) {
-      toast.error(err.message || "Invalid email or password! Please check your admin credentials.");
+      toast.error(err.message || "Invalid credentials! Please check your email and password.");
     } finally {
       setLoading(false);
     }

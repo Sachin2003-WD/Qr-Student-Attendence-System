@@ -105,6 +105,9 @@ public class AdminAuthService {
 
         Admin admin = adminRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
         com.mentormatrix.entity.User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        if (user == null && admin != null && admin.getUser() != null) {
+            user = admin.getUser();
+        }
 
         if (admin == null && user == null) {
             throw new UnauthorizedException("Invalid email or password");
@@ -112,6 +115,7 @@ public class AdminAuthService {
 
         String passwordHash = admin != null && admin.getPassword() != null ? admin.getPassword() : (user != null ? user.getPassword() : null);
         String name = admin != null && admin.getName() != null ? admin.getName() : (user != null ? user.getName() : "Admin");
+        String finalEmail = admin != null && admin.getEmail() != null ? admin.getEmail() : (user != null ? user.getEmail() : cleanEmail);
         Boolean active = admin != null && admin.getActive() != null ? admin.getActive() : (user != null ? user.getActive() : true);
 
         if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
@@ -122,14 +126,14 @@ public class AdminAuthService {
             throw new UnauthorizedException("Account is disabled");
         }
 
-        String accessToken = jwtUtil.generateAccessToken(cleanEmail, "ADMIN");
-        String refreshToken = refreshTokenService.createRefreshToken(cleanEmail, "ADMIN").getToken();
+        String accessToken = jwtUtil.generateAccessToken(finalEmail, "ADMIN");
+        String refreshToken = refreshTokenService.createRefreshToken(finalEmail, "ADMIN").getToken();
 
         AuthResponse authResponse = new AuthResponse();
         authResponse.setAccessToken(accessToken);
         authResponse.setRefreshToken(refreshToken);
         authResponse.setTokenType("Bearer ");
-        authResponse.setEmail(cleanEmail);
+        authResponse.setEmail(finalEmail);
         authResponse.setName(name);
         authResponse.setRole("ADMIN");
         authResponse.setExpiresIn(jwtUtil.getAccessTokenExpirationMs());
@@ -139,11 +143,17 @@ public class AdminAuthService {
 
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
-        Admin admin = adminRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
-        
-        String otp = otpService.generateOtp(admin.getEmail());
-        emailService.sendOtpEmail(admin.getEmail(), otp);
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+        Admin admin = adminRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        com.mentormatrix.entity.User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+
+        if (admin == null && user == null) {
+            throw new ResourceNotFoundException("No administrator found with email: " + cleanEmail);
+        }
+
+        String targetEmail = admin != null ? admin.getEmail() : (user != null ? user.getEmail() : cleanEmail);
+        String otp = otpService.generateOtp(targetEmail);
+        emailService.sendOtpEmail(targetEmail, otp);
     }
 
     @Transactional
@@ -152,18 +162,32 @@ public class AdminAuthService {
             throw new BadRequestException("Passwords do not match");
         }
 
-        if (!otpService.validateOtp(request.getEmail(), request.getOtp())) {
-            throw new UnauthorizedException("Invalid or expired OTP");
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        if (!otpService.validateOtp(cleanEmail, request.getOtp().trim())) {
+            throw new UnauthorizedException("Invalid or expired OTP code. Please check your email or request a new OTP.");
         }
 
-        Admin admin = adminRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+        Admin admin = adminRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
+        com.mentormatrix.entity.User user = userRepository.findByEmailAndDeletedFalse(cleanEmail).orElse(null);
 
-        admin.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        adminRepository.save(admin);
+        if (admin == null && user == null) {
+            throw new ResourceNotFoundException("Administrator not found for email: " + cleanEmail);
+        }
 
-        otpService.clearOtp(request.getEmail());
-        emailService.sendPasswordChangedEmail(admin.getEmail(), admin.getName());
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        if (admin != null) {
+            admin.setPassword(encodedPassword);
+            adminRepository.save(admin);
+        }
+        if (user != null) {
+            user.setPassword(encodedPassword);
+            userRepository.save(user);
+        }
+
+        otpService.clearOtp(cleanEmail);
+        String adminName = admin != null ? admin.getName() : (user != null ? user.getName() : "Administrator");
+        emailService.sendPasswordChangedEmail(cleanEmail, adminName);
     }
 
     @Transactional

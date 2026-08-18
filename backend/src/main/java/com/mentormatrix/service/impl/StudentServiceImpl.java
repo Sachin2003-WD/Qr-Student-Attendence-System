@@ -134,6 +134,7 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     public void uploadProfileImage(String email, MultipartFile file) {
+        fileUploadUtil.validateImageFile(file);
         Student student = studentRepository.findByEmailAndDeletedFalse(email)
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found with email: " + email));
 

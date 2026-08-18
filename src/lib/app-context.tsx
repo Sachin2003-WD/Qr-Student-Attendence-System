@@ -10,7 +10,10 @@ interface AppState {
   toggleTheme: () => void;
   userName: string;
   userEmail: string;
+  userUsn: string;
   updateUserName: (name: string) => void;
+  updateUserUsn: (usn: string) => void;
+  updateUserProfile: (data: { name?: string; email?: string; usn?: string }) => void;
   logout: () => void;
 }
 
@@ -21,6 +24,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [userName, setUserName] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string>("");
+  const [userUsn, setUserUsn] = useState<string>("");
 
   useEffect(() => {
     const rawRole = localStorage.getItem("sa.role") || localStorage.getItem("mm.role") || "student";
@@ -28,10 +32,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const storedTheme = ((localStorage.getItem("sa.theme") || localStorage.getItem("mm.theme")) as "light" | "dark" | null) ?? "light";
     const storedEmail = localStorage.getItem("sa.email") || localStorage.getItem("mm.email") || "";
     const storedName = localStorage.getItem("sa.name");
+    const storedUsn = localStorage.getItem("sa.usn") || "";
 
     setRoleState(storedRole);
     setTheme(storedTheme);
     setUserEmail(storedEmail);
+    setUserUsn(storedUsn);
     if (storedName) {
       setUserName(storedName);
     } else if (storedEmail) {
@@ -42,6 +48,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       api.getProfile()
         .then((profile) => {
           if (profile?.name && !storedName) setUserName(profile.name);
+          if (profile?.email && !storedEmail) setUserEmail(profile.email);
+          if (profile?.usn) {
+            setUserUsn(profile.usn);
+            localStorage.setItem("sa.usn", profile.usn);
+          }
         })
         .catch(() => {
           // ignore profile fetch error
@@ -66,6 +77,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("sa.name", name);
   };
 
+  const updateUserUsn = (usn: string) => {
+    setUserUsn(usn);
+    localStorage.setItem("sa.usn", usn);
+  };
+
+  const updateUserProfile = (data: { name?: string; email?: string; usn?: string }) => {
+    if (data.name) {
+      setUserName(data.name);
+      localStorage.setItem("sa.name", data.name);
+    }
+    if (data.email) {
+      setUserEmail(data.email);
+      localStorage.setItem("sa.email", data.email);
+    }
+    if (data.usn) {
+      setUserUsn(data.usn);
+      localStorage.setItem("sa.usn", data.usn);
+    }
+  };
+
   const logout = () => {
     api.logout();
     window.location.href = "/login";
@@ -80,7 +111,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toggleTheme,
         userName: userName || userEmail || "User",
         userEmail,
+        userUsn,
         updateUserName,
+        updateUserUsn,
+        updateUserProfile,
         logout,
       }}
     >

@@ -7,7 +7,6 @@ import {
   QrCode,
   Users,
   AlertCircle,
-  RefreshCw,
   FileText,
   BookOpen,
   Clock,
@@ -15,8 +14,6 @@ import {
   Building2,
   ArrowRight,
   Sparkles,
-  Copy,
-  Check,
   ShieldCheck,
   Camera,
   FlaskConical,
@@ -42,7 +39,6 @@ import {
   type AttendanceResponse,
   type AttendanceSummaryResponse,
 } from "@/lib/api-client";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/dashboard")({
   head: () => ({
@@ -96,18 +92,25 @@ function Dashboard() {
    STUDENT DASHBOARD (CLEAN & SIMPLE)
    ============================================================ */
 function StudentLiveDash() {
-  const { userName, userEmail } = useApp();
+  const { userName, userEmail, userUsn } = useApp();
   const [summary, setSummary] = useState<AttendanceSummaryResponse | null>(null);
   const [studentToken, setStudentToken] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [studentUsn, setStudentUsn] = useState(userUsn || "");
   const [loading, setLoading] = useState(true);
 
   const loadStudentData = async () => {
     try {
       setLoading(true);
-      const sum = await api.getMyAttendanceSummary().catch(() => null);
+      const [sum, prof] = await Promise.all([
+        api.getMyAttendanceSummary().catch(() => null),
+        api.getProfile().catch(() => null),
+      ]);
       if (sum) setSummary(sum);
-      setStudentToken(getDailyStudentToken());
+      const currentUsn = userUsn || localStorage.getItem("sa.usn") || prof?.usn || "";
+      if (currentUsn) {
+        setStudentUsn(currentUsn);
+      }
+      setStudentToken(getDailyStudentToken(userEmail));
     } finally {
       setLoading(false);
     }
@@ -122,18 +125,11 @@ function StudentLiveDash() {
         .catch(() => {});
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
-
-  const handleCopyToken = () => {
-    if (!studentToken) return;
-    navigator.clipboard.writeText(studentToken);
-    setCopied(true);
-    toast.success("Copied your attendance QR token!");
-    setTimeout(() => setCopied(false), 2000);
-  };
+  }, [userUsn, userEmail]);
 
   const attendancePct = summary?.attendancePercentage ?? 0;
   const isEligible = attendancePct >= 75;
+  const displayUsn = studentUsn || userUsn || localStorage.getItem("sa.usn") || "";
 
   return (
     <div className="space-y-6">
@@ -223,6 +219,11 @@ function StudentLiveDash() {
               <div className="space-y-0.5">
                 <span className="font-bold text-foreground block">{userName || "Enrolled Student"}</span>
                 <span className="text-[11px] text-muted-foreground font-mono">{userEmail}</span>
+                {displayUsn && (
+                  <span className="text-[11px] font-bold text-primary font-mono block">
+                    USN: {displayUsn}
+                  </span>
+                )}
               </div>
               <Badge variant="outline" className="font-mono text-xs font-bold bg-background text-emerald-600 border-emerald-500/30">
                 Active Student
@@ -263,15 +264,12 @@ function StudentLiveDash() {
               <strong className="text-sm text-primary font-bold">{studentToken || "S16-ACTIVE-01"}</strong>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyToken}
-              className="w-full text-xs font-semibold gap-1.5 cursor-pointer"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copied to Clipboard!" : "Copy Token Code"}
-            </Button>
+            {displayUsn && (
+              <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 w-full flex items-center justify-between font-mono text-xs">
+                <span className="text-muted-foreground">Registered USN:</span>
+                <strong className="text-sm text-foreground font-mono font-bold">{displayUsn}</strong>
+              </div>
+            )}
 
             <p className="text-[11px] text-muted-foreground">
               Tip: The code updates automatically every calendar day to protect against proxy attendance.
@@ -289,9 +287,6 @@ function StudentLiveDash() {
             </CardTitle>
             <CardDescription className="text-xs">Your verified attendance history.</CardDescription>
           </div>
-          <Button size="icon" variant="ghost" onClick={loadStudentData}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
         </CardHeader>
         <CardContent className="pt-2">
           {loading ? (

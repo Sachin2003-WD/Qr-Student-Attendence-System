@@ -7,6 +7,7 @@ import com.mentormatrix.service.RefreshTokenService;
 import com.mentormatrix.service.StudentAuthService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -49,8 +50,12 @@ public class StudentAuthController {
     }
 
     @PostMapping("/change-password")
+    @PreAuthorize("hasRole('STUDENT')")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            throw new com.mentormatrix.exception.UnauthorizedException("Authentication required to change password");
+        }
         studentAuthService.changePassword(auth.getName(), request);
         return ApiResponse.success("Password changed successfully", null);
     }
@@ -58,7 +63,9 @@ public class StudentAuthController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        studentAuthService.logout(auth.getName());
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            studentAuthService.logout(auth.getName());
+        }
         return ApiResponse.success("Logged out successfully", null);
     }
 

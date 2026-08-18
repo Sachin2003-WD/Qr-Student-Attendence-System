@@ -48,14 +48,30 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Public Health & Documentation
                 .requestMatchers("/health", "/health/**", "/api/v1/health", "/api/health/**").permitAll()
-                .requestMatchers("/auth/**", "/api/auth/**", "/api/v1/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/api/v3/api-docs/**", "/api/swagger-ui/**", "/api/swagger-ui.html").permitAll()
+
+                // Authenticated Auth endpoints (must be authenticated to change password)
+                .requestMatchers("/auth/admin/change-password", "/api/auth/admin/change-password", "/api/v1/auth/admin/change-password").hasRole("ADMIN")
+                .requestMatchers("/auth/student/change-password", "/api/auth/student/change-password", "/api/v1/auth/student/change-password").hasRole("STUDENT")
+
+                // Public Authentication endpoints
+                .requestMatchers("/auth/**", "/api/auth/**", "/api/v1/auth/**").permitAll()
+
+                // Role-specific protected endpoints
                 .requestMatchers("/admin/**", "/api/admin/**", "/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers("/faculty/**", "/api/faculty/**", "/api/v1/faculty/**").hasAnyRole("FACULTY", "ADMIN")
                 .requestMatchers("/student/**", "/api/student/**", "/api/v1/student/**").hasAnyRole("STUDENT", "ADMIN")
+
+                // Protected Workspace Features
                 .requestMatchers("/attendance/**", "/api/attendance/**", "/api/v1/attendance/**").authenticated()
+                .requestMatchers("/leaves/**", "/api/leaves/**", "/api/v1/leaves/**").authenticated()
+                .requestMatchers("/batches/**", "/api/batches/**", "/api/v1/batches/**").authenticated()
+                .requestMatchers("/departments/**", "/api/departments/**", "/api/v1/departments/**").authenticated()
                 .requestMatchers("/common/**", "/api/common/**", "/api/v1/common/**").authenticated()
+
+                // Default lock-down for any remaining path
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

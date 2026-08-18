@@ -58,8 +58,12 @@ public class AdminAuthController {
     }
 
     @PostMapping("/auth/admin/change-password")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName())) {
+            throw new UnauthorizedException("Authentication required to change password");
+        }
         adminAuthService.changePassword(auth.getName(), request);
         return ApiResponse.success("Password changed successfully", null);
     }
@@ -67,7 +71,9 @@ public class AdminAuthController {
     @PostMapping("/auth/admin/logout")
     public ApiResponse<Void> logout() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        adminAuthService.logout(auth.getName());
+        if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+            adminAuthService.logout(auth.getName());
+        }
         return ApiResponse.success("Logged out successfully", null);
     }
 

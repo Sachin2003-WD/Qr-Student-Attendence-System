@@ -28,6 +28,7 @@ const studentMenu: Item[] = [
 
 const adminMenu: Item[] = [
   { title: "Students", url: "/app/students", icon: Users },
+  { title: "Leave Requests", url: "/app/leaves", icon: FileCheck },
   { title: "Admins (10 Max)", url: "/app/admins", icon: ShieldCheck },
   { title: "Batches", url: "/app/batches", icon: Layers },
   { title: "Departments", url: "/app/departments", icon: Building2 },

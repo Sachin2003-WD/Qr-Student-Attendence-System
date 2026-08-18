@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   User,
   Mail,
@@ -21,16 +20,17 @@ import {
   Key,
   QrCode,
   CheckCircle2,
-  Lock,
   Bell,
-  Sparkles,
   Smartphone,
-  Globe,
-  Upload,
   RefreshCw,
   Copy,
   Check,
-  Clock,
+  Edit3,
+  X,
+  Save,
+  BookOpen,
+  FileText,
+  Code2,
 } from "lucide-react";
 import { useApp } from "@/lib/app-context";
 import { api, type DepartmentItem, type QRCodeResponse } from "@/lib/api-client";
@@ -52,7 +52,7 @@ export const Route = createFileRoute("/app/profile")({
 });
 
 function ProfilePage() {
-  const { role, userName, userEmail, updateUserName } = useApp();
+  const { role, userName, userEmail, updateUserProfile } = useApp();
 
   // Profile Form States
   const [name, setName] = useState(userName || "");
@@ -63,10 +63,10 @@ function ProfilePage() {
   const [section, setSection] = useState("Section A");
   const [usn, setUsn] = useState("");
   const [skills, setSkills] = useState("");
-  const [interests, setInterests] = useState("");
   const [bio, setBio] = useState("");
   const [departments, setDepartments] = useState<DepartmentItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Security / Password Change State
   const [currentPassword, setCurrentPassword] = useState("");
@@ -115,7 +115,7 @@ function ProfilePage() {
         const storedSem = localStorage.getItem("sa.sem") || "6";
         const storedSection = localStorage.getItem("sa.section") || "Section A";
         const storedUsn =
-          localStorage.getItem("sa.usn") || (role === "student" ? "1RA21CS001" : "EMP-ADMIN-01");
+          localStorage.getItem("sa.usn") || (role === "admin" ? "EMP-ADMIN-01" : "");
         const storedBio = localStorage.getItem("sa.bio") || "";
         const storedSkills = localStorage.getItem("sa.skills") || "";
 
@@ -172,7 +172,8 @@ function ProfilePage() {
 
     setLoading(true);
     try {
-      updateUserName(name.trim());
+      // Instant state update without full page refresh
+      updateUserProfile({ name: name.trim(), email: email.trim() });
       localStorage.setItem("sa.phone", phone);
       localStorage.setItem("sa.dept", dept);
       localStorage.setItem("sa.sem", semester);
@@ -188,6 +189,7 @@ function ProfilePage() {
         department: dept,
       });
 
+      setIsEditing(false);
       toast.success("Profile details updated successfully!");
     } catch (err: any) {
       toast.error(err.message || "Failed to update profile.");
@@ -235,18 +237,39 @@ function ProfilePage() {
         title="My Profile & Account Settings"
         subtitle="Manage your personal information, department affiliation, academic section, credentials, and notification preferences."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-xs font-semibold"
-            onClick={() => {
-              loadProfileData();
-              if (role === "student") loadDynamicQR();
-              toast.success("Profile synchronized!");
-            }}
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Sync Profile
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isEditing ? "outline" : "default"}
+              size="sm"
+              className="gap-1.5 text-xs font-semibold"
+              onClick={() => {
+                setIsEditing(!isEditing);
+                setActiveTab("general");
+              }}
+            >
+              {isEditing ? (
+                <>
+                  <X className="h-3.5 w-3.5" /> Cancel Edit
+                </>
+              ) : (
+                <>
+                  <Edit3 className="h-3.5 w-3.5" /> Edit Profile
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs font-semibold"
+              onClick={() => {
+                loadProfileData();
+                if (role === "student") loadDynamicQR();
+                toast.success("Profile synchronized!");
+              }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Sync
+            </Button>
+          </div>
         }
       />
 
@@ -274,8 +297,15 @@ function ProfilePage() {
                     {role}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Mail className="h-3.5 w-3.5 text-primary" /> {email || "user@college.edu"}
+                <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3.5 w-3.5 text-primary" /> {email || "user@college.edu"}
+                  </span>
+                  {phone && (
+                    <span className="flex items-center gap-1 font-mono">
+                      <Phone className="h-3.5 w-3.5 text-muted-foreground" /> {phone}
+                    </span>
+                  )}
                   {usn && (
                     <span className="font-mono bg-muted px-2 py-0.5 rounded text-[10px] font-bold text-foreground">
                       {usn}
@@ -286,6 +316,19 @@ function ProfilePage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {!isEditing && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs font-semibold"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setActiveTab("general");
+                  }}
+                >
+                  <Edit3 className="h-3.5 w-3.5 text-primary" /> Edit Profile Details
+                </Button>
+              )}
               <Badge
                 variant="outline"
                 className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 py-1 px-3"
@@ -323,7 +366,7 @@ function ProfilePage() {
       <div className="flex items-center gap-2 overflow-x-auto border-b border-border/60 pb-2">
         <button
           onClick={() => setActiveTab("general")}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
             activeTab === "general"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -335,7 +378,7 @@ function ProfilePage() {
         {role === "student" && (
           <button
             onClick={() => setActiveTab("qr")}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
               activeTab === "qr"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -347,7 +390,7 @@ function ProfilePage() {
 
         <button
           onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
             activeTab === "security"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -358,7 +401,7 @@ function ProfilePage() {
 
         <button
           onClick={() => setActiveTab("notifications")}
-          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
             activeTab === "notifications"
               ? "bg-primary text-primary-foreground shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -371,160 +414,261 @@ function ProfilePage() {
       {/* TAB 1: GENERAL & ACADEMIC DETAILS */}
       {activeTab === "general" && (
         <Card className="border-border/60 shadow-xs">
-          <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <User className="h-4 w-4 text-primary" /> Edit Personal & Academic Information
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Update your contact details, academic department, section, and profile bio.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/40">
+            <div>
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" />
+                {isEditing ? "Edit Personal & Academic Information" : "Personal & Academic Profile"}
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                {isEditing
+                  ? "Update your contact details, academic department, section, and profile bio."
+                  : "View your verified personal details, academic affiliation, and profile information."}
+              </CardDescription>
+            </div>
+            {!isEditing ? (
+              <Button
+                size="sm"
+                className="gap-1.5 text-xs font-semibold"
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit3 className="h-3.5 w-3.5" /> Edit Details
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs font-semibold"
+                onClick={() => setIsEditing(false)}
+              >
+                <X className="h-3.5 w-3.5" /> Cancel
+              </Button>
+            )}
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Full Name</Label>
-                  <Input
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="h-9 text-xs"
-                  />
+          <CardContent className="pt-4">
+            {isEditing ? (
+              <form onSubmit={handleSaveProfile} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Full Name</Label>
+                    <Input
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Email Address</Label>
+                    <Input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Phone Number</Label>
+                    <Input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Enter your mobile number"
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">
+                      {role === "admin" ? "Admin Employee ID" : "University Seat Number (USN)"}
+                    </Label>
+                    <Input
+                      value={usn}
+                      onChange={(e) => setUsn(e.target.value)}
+                      placeholder={role === "admin" ? "EMP-ADMIN-01" : "1RA21CS001"}
+                      className="h-9 text-xs font-mono uppercase"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Academic Department</Label>
+                    <select
+                      value={dept}
+                      onChange={(e) => setDept(e.target.value)}
+                      className="w-full h-9 text-xs bg-background border border-border rounded-md px-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                    >
+                      {departments.length > 0 ? (
+                        departments.map((d) => (
+                          <option key={d.code} value={d.name}>
+                            {d.name} ({d.code})
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Computer Science">Computer Science (CSE)</option>
+                          <option value="Information Technology">Information Technology (IT)</option>
+                          <option value="Electronics & Comm">Electronics & Comm (ECE)</option>
+                          <option value="AIML & Data Science">AIML & Data Science (AIDS)</option>
+                          <option value="Mechanical Eng">Mechanical Eng (ME)</option>
+                          <option value="Civil Engineering">Civil Engineering (CV)</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Semester</Label>
+                      <select
+                        value={semester}
+                        onChange={(e) => setSemester(e.target.value)}
+                        className="w-full h-9 text-xs bg-background border border-border rounded-md px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                          <option key={s} value={String(s)}>
+                            Sem {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold">Section</Label>
+                      <select
+                        value={section}
+                        onChange={(e) => setSection(e.target.value)}
+                        className="w-full h-9 text-xs bg-background border border-border rounded-md px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium font-mono"
+                      >
+                        <option value="Section A">Section A</option>
+                        <option value="Section B">Section B</option>
+                        <option value="Section C">Section C</option>
+                        <option value="Section D">Section D</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Technical Skills</Label>
+                    <Input
+                      value={skills}
+                      onChange={(e) => setSkills(e.target.value)}
+                      placeholder="e.g. Java, React, Python, Data Structures"
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Biography / Academic Focus</Label>
+                    <Textarea
+                      rows={3}
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Write a brief bio about your academic focus, projects, or responsibilities..."
+                      className="text-xs resize-none"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Email Address</Label>
-                  <Input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="h-9 text-xs font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Phone Number</Label>
-                  <Input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Enter your mobile number"
-                    className="h-9 text-xs font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Admin ID</Label>
-                  <Input
-                    value={usn}
-                    onChange={(e) => setUsn(e.target.value)}
-                    placeholder="Enter admin ID"
-                    className="h-9 text-xs font-mono uppercase"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Academic Department</Label>
-                  <select
-                    value={dept}
-                    onChange={(e) => setDept(e.target.value)}
-                    className="w-full h-9 text-xs bg-background border border-border rounded-md px-2.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+                <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                    className="text-xs"
                   >
-                    {departments.length > 0 ? (
-                      departments.map((d) => (
-                        <option key={d.code} value={d.name}>
-                          {d.name} ({d.code})
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="Computer Science">Computer Science (CSE)</option>
-                        <option value="Information Technology">Information Technology (IT)</option>
-                        <option value="Electronics & Comm">Electronics & Comm (ECE)</option>
-                        <option value="AIML & Data Science">AIML & Data Science (AIDS)</option>
-                        <option value="Mechanical Eng">Mechanical Eng (ME)</option>
-                        <option value="Civil Engineering">Civil Engineering (CV)</option>
-                      </>
-                    )}
-                  </select>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={loading}
+                    className="text-xs font-semibold gap-1.5"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    {loading ? "Saving Details..." : "Save Profile Details"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                    <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-primary" /> Full Name
+                    </span>
+                    <div className="text-sm font-bold text-foreground">{name || "Not specified"}</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                    <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-primary" /> Email Address
+                    </span>
+                    <div className="text-sm font-mono text-foreground truncate">{email || "Not specified"}</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                    <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5 text-primary" /> Contact Phone
+                    </span>
+                    <div className="text-sm font-mono text-foreground">{phone || "+91 98765 43210"}</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                    <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                      <IdCard className="h-3.5 w-3.5 text-primary" />
+                      {role === "admin" ? "Employee / Admin ID" : "USN / Registration No."}
+                    </span>
+                    <div className="text-sm font-mono font-bold text-primary">{usn || (role === "admin" ? "EMP-ADMIN-01" : "Not Provided")}</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                    <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5 text-primary" /> Department
+                    </span>
+                    <div className="text-sm font-semibold text-foreground">{dept}</div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/50 space-y-1">
+                    <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1.5">
+                      <GraduationCap className="h-3.5 w-3.5 text-primary" /> Semester & Section
+                    </span>
+                    <div className="text-sm font-semibold text-foreground">
+                      Semester {semester} • <span className="font-mono text-primary">{section}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Semester</Label>
-                    <select
-                      value={semester}
-                      onChange={(e) => setSemester(e.target.value)}
-                      className="w-full h-9 text-xs bg-background border border-border rounded-md px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium"
-                    >
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                        <option key={s} value={String(s)}>
-                          Sem {s}
-                        </option>
+                {skills && (
+                  <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-2">
+                    <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <Code2 className="h-3.5 w-3.5 text-primary" /> Technical Skills & Competencies
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {skills.split(",").map((s, idx) => (
+                        <Badge key={idx} variant="secondary" className="text-xs font-medium">
+                          {s.trim()}
+                        </Badge>
                       ))}
-                    </select>
+                    </div>
                   </div>
+                )}
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Section</Label>
-                    <select
-                      value={section}
-                      onChange={(e) => setSection(e.target.value)}
-                      className="w-full h-9 text-xs bg-background border border-border rounded-md px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-medium font-mono"
-                    >
-                      <option value="Section A">Section A</option>
-                      <option value="Section B">Section B</option>
-                      <option value="Section C">Section C</option>
-                      <option value="Section D">Section D</option>
-                    </select>
+                {bio && (
+                  <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-1.5">
+                    <span className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-primary" /> Profile Biography
+                    </span>
+                    <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">{bio}</p>
                   </div>
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs font-semibold">Technical Skills</Label>
-                  <Input
-                    value={skills}
-                    onChange={(e) => setSkills(e.target.value)}
-                    placeholder="Enter your skills"
-                    className="h-9 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs font-semibold">Biography</Label>
-                  <Textarea
-                    rows={3}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Write a brief bio about your academic focus, projects, or responsibilities..."
-                    className="text-xs resize-none"
-                  />
-                </div>
+                )}
               </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadProfileData()}
-                  className="text-xs"
-                >
-                  Reset Form
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={loading}
-                  className="text-xs font-semibold"
-                >
-                  {loading ? "Saving..." : "Save Profile Details"}
-                </Button>
-              </div>
-            </form>
+            )}
           </CardContent>
         </Card>
       )}

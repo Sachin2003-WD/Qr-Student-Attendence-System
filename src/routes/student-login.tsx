@@ -29,27 +29,27 @@ function StudentLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      toast.error("Please enter a valid student email address (e.g. student@college.edu).");
+    const cleanInput = email.trim();
+    if (!cleanInput || cleanInput.length < 3) {
+      toast.error("Please enter your registered student email address or USN.");
       return;
     }
 
-    if (!password || password.length < 6) {
-      toast.error("Please enter your password (minimum 6 characters).");
+    if (!password) {
+      toast.error("Please enter your password.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await api.loginStudent(cleanEmail, password);
-      setRole("student");
-      toast.success(`Welcome back, ${res.name || res.email}! Student session active.`);
+      const res = await api.loginStudent(cleanInput, password);
+      const userRole = res.role?.toLowerCase() === "admin" ? "admin" : "student";
+      setRole(userRole);
+      toast.success(`Welcome back, ${res.name || cleanInput}! Login successful.`);
       nav({ to: "/app/dashboard" });
     } catch (err: any) {
       toast.error(
-        err.message || "Invalid student email or password! Please check your credentials.",
+        err.message || "Invalid student email/USN or password! Please check your credentials.",
       );
     } finally {
       setLoading(false);
@@ -107,22 +107,22 @@ function StudentLoginPage() {
                 <CardTitle className="text-xl font-bold">Student Sign In</CardTitle>
               </div>
               <CardDescription className="text-xs">
-                Enter your student email and password to access your dashboard.
+                Enter your student email address or USN and password to access your dashboard.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4 text-left">
                 <div className="space-y-2">
                   <Label htmlFor="s-email" className="text-xs font-semibold">
-                    Student Email Address
+                    Student Email Address or USN
                   </Label>
                   <Input
                     id="s-email"
-                    type="email"
+                    type="text"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Enter your email or password"
                     className="h-10 text-xs"
                   />
                 </div>

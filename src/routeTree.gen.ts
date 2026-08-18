@@ -29,6 +29,7 @@ import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppDepartmentsRouteImport } from './routes/app.departments'
 import { Route as AppLabsRouteImport } from './routes/app.labs'
+import { Route as AppLeavesRouteImport } from './routes/app.leaves'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppReportsRouteImport } from './routes/app.reports'
@@ -140,6 +141,11 @@ const AppLabsRoute = AppLabsRouteImport.update({
   path: '/labs',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLeavesRoute = AppLeavesRouteImport.update({
+  id: '/leaves',
+  path: '/leaves',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/departments': typeof AppDepartmentsRoute
   '/app/labs': typeof AppLabsRoute
+  '/app/leaves': typeof AppLeavesRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/departments': typeof AppDepartmentsRoute
   '/app/labs': typeof AppLabsRoute
+  '/app/leaves': typeof AppLeavesRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/departments': typeof AppDepartmentsRoute
   '/app/labs': typeof AppLabsRoute
+  '/app/leaves': typeof AppLeavesRoute
   '/app/notifications': typeof AppNotificationsRoute
   '/app/profile': typeof AppProfileRoute
   '/app/reports': typeof AppReportsRoute
@@ -311,6 +320,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/departments'
     | '/app/labs'
+    | '/app/leaves'
     | '/app/notifications'
     | '/app/profile'
     | '/app/reports'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/departments'
     | '/app/labs'
+    | '/app/leaves'
     | '/app/notifications'
     | '/app/profile'
     | '/app/reports'
@@ -375,6 +386,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/departments'
     | '/app/labs'
+    | '/app/leaves'
     | '/app/notifications'
     | '/app/profile'
     | '/app/reports'
@@ -545,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLabsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/leaves': {
+      id: '/app/leaves'
+      path: '/leaves'
+      fullPath: '/app/leaves'
+      preLoaderRoute: typeof AppLeavesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/notifications': {
       id: '/app/notifications'
       path: '/notifications'
@@ -626,6 +645,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppDepartmentsRoute: typeof AppDepartmentsRoute
   AppLabsRoute: typeof AppLabsRoute
+  AppLeavesRoute: typeof AppLeavesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -642,6 +662,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppDepartmentsRoute: AppDepartmentsRoute,
   AppLabsRoute: AppLabsRoute,
+  AppLeavesRoute: AppLeavesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppReportsRoute: AppReportsRoute,

@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
         log.error("DataIntegrityViolationException: {}", ex.getMessage());
-        return new ResponseEntity<>(ApiResponse.error("Database constraint violation occurred: " + ex.getMessage()), HttpStatus.CONFLICT);
+        return new ResponseEntity<>(ApiResponse.error("A database constraint conflict occurred. Please verify your input."), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(Exception.class)

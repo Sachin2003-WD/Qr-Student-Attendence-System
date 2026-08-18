@@ -31,13 +31,19 @@ public class FileUploadUtil {
             }
 
             String originalFilename = file.getOriginalFilename();
-            String extension = "";
+            String extension = ".png";
             if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                String rawExt = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase().trim();
+                if (Arrays.asList(".jpg", ".jpeg", ".png", ".webp", ".gif").contains(rawExt)) {
+                    extension = rawExt;
+                }
             }
 
             String uniqueFilename = UUID.randomUUID().toString() + extension;
-            Path filePath = uploadPath.resolve(uniqueFilename);
+            Path filePath = uploadPath.resolve(uniqueFilename).normalize();
+            if (!filePath.startsWith(uploadPath)) {
+                throw new BadRequestException("Invalid file destination path.");
+            }
 
             Files.copy(file.getInputStream(), filePath);
             log.info("Saved file: {}", filePath);

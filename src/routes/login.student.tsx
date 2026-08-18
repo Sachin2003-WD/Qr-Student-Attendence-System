@@ -29,26 +29,26 @@ function StudentLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanEmail = email.trim().toLowerCase();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      toast.error("Please enter a valid student email address (e.g. student@college.edu).");
+    const cleanInput = email.trim();
+    if (!cleanInput || cleanInput.length < 3) {
+      toast.error("Please enter your registered email address or Student USN.");
       return;
     }
 
-    if (!password || password.length < 6) {
-      toast.error("Please enter your password (minimum 6 characters).");
+    if (!password) {
+      toast.error("Please enter your password.");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await api.loginStudent(cleanEmail, password);
-      setRole("student");
-      toast.success(`Welcome back, ${res.name || res.email}! Student session active.`);
+      const res = await api.loginStudent(cleanInput, password);
+      const userRole = res.role?.toLowerCase() === "admin" ? "admin" : "student";
+      setRole(userRole);
+      toast.success(`Welcome back, ${res.name || cleanInput}! Login successful.`);
       nav({ to: "/app/dashboard" });
     } catch (err: any) {
-      toast.error(err.message || "Invalid email or password! Please check your credentials.");
+      toast.error(err.message || "Invalid email/USN or password! Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -85,14 +85,14 @@ function StudentLogin() {
 
       <form className="space-y-4 text-left" onSubmit={handleSubmit}>
         <div className="grid gap-2">
-          <Label htmlFor="email" className="text-xs font-semibold">Student Email Address</Label>
+          <Label htmlFor="email" className="text-xs font-semibold">Student Email Address or USN</Label>
           <Input
             id="email"
-            type="email"
+            type="text"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. student@college.edu"
+            placeholder="e.g. student@college.edu or 1RA21CS001"
             className="h-10 text-xs"
           />
         </div>
